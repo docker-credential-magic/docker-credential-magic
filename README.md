@@ -53,7 +53,35 @@ Loaded image: gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic
 ```
 
 ```
-$ docker run -it --rm --entrypoint docker-credential-gcr \
+$ docker run --rm \
+    gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic -h
+USAGE
+  cosign [flags] <subcommand>
+
+SUBCOMMANDS
+  verify             Verify a signature on the supplied container image
+  sign               Sign the supplied container image.
+  upload             upload signatures to the supplied container image
+  generate           generate (usigned) signature payloads from the supplied container image
+  download           Download signatures from the supplied container image
+  generate-key-pair  generate-key-pair generates a key-pair
+  sign-blob          Sign the supplied blob, outputting the base64-encoded signature to stdout.
+  upload-blob        Upload one or more blobs to the supplied container image address
+  copy               Copy the supplied container image and signatures.
+  clean              Remove all signatures from an image
+  verify-blob        Verify a signature on the supplied blob
+  triangulate        Outputs the located cosign image reference. This is the location cosign stores signatures.
+  version            Prints the cosign version
+  public-key         public-key gets a public key from the key-pair
+
+
+FLAGS
+  -d false          log debug output
+  -output-file ...  log output to a file
+```
+
+```
+$ docker run --rm --entrypoint docker-credential-gcr \
     gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic help
 Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
 
