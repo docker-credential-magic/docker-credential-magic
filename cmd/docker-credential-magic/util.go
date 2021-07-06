@@ -74,35 +74,42 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 
-	file, err := os.Open("credential-helpers/docker-credential-gcr")
-	if err != nil {
-		panic(err)
+	helpers := []string{
+		"acr-linux",
+		"ecr-login",
+		"gcr",
 	}
-	defer file.Close()
-	stat, err := file.Stat()
-	if err != nil {
-		panic(err)
-	}
+	for _, helper := range helpers {
+		file, err := os.Open(fmt.Sprintf("credential-helpers/docker-credential-%s", helper))
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		stat, err := file.Stat()
+		if err != nil {
+			panic(err)
+		}
 
-	creationTime := v1.Time{}
-	header := &tar.Header{
-		Name:     "usr/local/bin/docker-credential-gcr",
-		Size:     stat.Size(),
-		Typeflag: tar.TypeReg,
-		// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
-		// Use a fixed Mode, so that this isn't sensitive to the directory and umask
-		// under which it was created. Additionally, windows can only set 0222,
-		// 0444, or 0666, none of which are executable.
-		Mode:    0555,
-		ModTime: creationTime.Time,
-	}
+		creationTime := v1.Time{}
+		header := &tar.Header{
+			Name:     fmt.Sprintf("usr/local/bin/docker-credential-%s", helper),
+			Size:     stat.Size(),
+			Typeflag: tar.TypeReg,
+			// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
+			// Use a fixed Mode, so that this isn't sensitive to the directory and umask
+			// under which it was created. Additionally, windows can only set 0222,
+			// 0444, or 0666, none of which are executable.
+			Mode:    0555,
+			ModTime: creationTime.Time,
+		}
 
-	if err := tw.WriteHeader(header); err != nil {
-		panic(err)
-	}
+		if err := tw.WriteHeader(header); err != nil {
+			panic(err)
+		}
 
-	if _, err := io.Copy(tw, file); err != nil {
-		panic(err)
+		if _, err := io.Copy(tw, file); err != nil {
+			panic(err)
+		}
 	}
 
 	newLayer, err := tarball.LayerFromReader(&b)

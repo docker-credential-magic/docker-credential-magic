@@ -13,7 +13,7 @@ mkdir -p credential-helpers/
 cd credential-helpers/
 
 if [[ ! -f docker-credential-gcr ]]; then
-  if [[ ! -f  docker-credential-gcr.tar.gz ]]; then
+  if [[ ! -f docker-credential-gcr.tar.gz ]]; then
     curl -L -o docker-credential-gcr.tar.gz \
       "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v${GCR_HELPER_VERSION}/docker-credential-gcr_linux_amd64-${GCR_HELPER_VERSION}.tar.gz"
   fi
