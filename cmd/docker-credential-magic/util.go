@@ -1,9 +1,11 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -12,6 +14,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 )
 
 type (
@@ -68,15 +71,41 @@ func pushImageToLocalDaemon(tag name.Tag, base v1.Image) {
 }
 
 func appendCredentialHelpers(base v1.Image) v1.Image {
-	b, err := ioutil.ReadFile("credential-helpers/docker-credential-gcr")
+	var b bytes.Buffer
+	tw := tar.NewWriter(&b)
+
+	file, err := os.Open("credential-helpers/docker-credential-gcr")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	stat, err := file.Stat()
 	if err != nil {
 		panic(err)
 	}
 
-	newLayerMap := map[string][]byte{
-		"usr/local/bin/docker-credential-gcr": b,
+	creationTime := v1.Time{}
+	header := &tar.Header{
+		Name:     "usr/local/bin/docker-credential-gcr",
+		Size:     stat.Size(),
+		Typeflag: tar.TypeReg,
+		// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
+		// Use a fixed Mode, so that this isn't sensitive to the directory and umask
+		// under which it was created. Additionally, windows can only set 0222,
+		// 0444, or 0666, none of which are executable.
+		Mode:    0555,
+		ModTime: creationTime.Time,
 	}
-	newLayer, err := crane.Layer(newLayerMap)
+
+	if err := tw.WriteHeader(header); err != nil {
+		panic(err)
+	}
+
+	if _, err := io.Copy(tw, file); err != nil {
+		panic(err)
+	}
+
+	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
 		panic(err)
 	}
