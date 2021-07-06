@@ -21,7 +21,8 @@ This will create the file `pkged.go` in `cmd/docker-credential-magic/`, which
 allows us to build a single binary with all supported credential helpers baked in.
 
 The downside is that our binary is larger that normal (~30mb), but the upside
-is that users will not need to make any network requests in order to use this tool.
+is that users will not need to make any network requests (to fetch credential helpers)
+in order to use this tool.
 
 ### Building binary
 
