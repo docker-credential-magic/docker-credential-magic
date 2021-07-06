@@ -47,6 +47,8 @@ Which will produce a new image in your local Docker engine named the following:
 
 #### Example
 
+The following is an example of augmenting the image for [cosign](https://github.com/sigstore/cosign).
+
 ```
 $ bin/docker-credential-magic gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
 Loaded image: gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic
