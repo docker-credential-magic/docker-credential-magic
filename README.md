@@ -44,3 +44,37 @@ Which will produce a new image in your local Docker engine named the following:
 ```
 <ref>.magic
 ```
+
+#### Example
+
+```
+$ bin/docker-credential-magic gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
+Loaded image: gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic
+```
+
+```
+$ docker run -it --rm --entrypoint docker-credential-gcr \
+    gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic help
+Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
+
+Subcommands:
+	clear            remove all stored credentials
+	commands         list all command names
+	help             describe subcommands and their syntax
+	version          print the version of the binary to stdout
+
+Subcommands for Config:
+	config           configure the credential helper
+	configure-docker  configures the Docker client to use docker-credential-gcr
+
+Subcommands for Docker credential store API:
+	erase            (UNIMPLEMENTED) erase any stored credentials for the server specified via stdin
+	get              for the server specified via stdin, return the stored credentials via stdout
+	list             (UNIMPLEMENTED) list all stored credentials
+	store            (UNIMPLEMENTED) for the specified server, store the credentials provided via stdin
+
+Subcommands for GCR authentication:
+	gcr-login        log in to GCR
+	gcr-logout       log out from GCR
+
+```
