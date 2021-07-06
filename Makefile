@@ -8,6 +8,10 @@ fetch-helpers:
 pkger-gen:
 	go run cmd/pkger-gen/main.go
 
+.PHONY: vendor
+vendor:
+	go mod vendor
+
 .PHONY: build
 build:
 	go build -o bin/docker-credential-magic .../cmd/docker-credential-magic

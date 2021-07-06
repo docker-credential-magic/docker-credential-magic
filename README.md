@@ -30,7 +30,7 @@ After running the steps above related to `pkged.go`,
 run the following:
 
 ```
-make build
+make vendor build
 ```
 
 ### Run binary
