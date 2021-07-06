@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/markbates/pkger"
 	"io"
 	"os"
 	"strings"
@@ -16,6 +17,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 )
+
+var helpers = []string{
+	"acr-linux",
+	"ecr-login",
+	"gcr",
+}
 
 type (
 	config struct {
@@ -74,18 +81,13 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 
-	helpers := []string{
-		"acr-linux",
-		"ecr-login",
-		"gcr",
-	}
 	for _, helper := range helpers {
-		file, err := os.Open(fmt.Sprintf("credential-helpers/docker-credential-%s", helper))
+		file, err := pkger.Open(fmt.Sprintf("/credential-helpers/docker-credential-%s", helper))
 		if err != nil {
 			panic(err)
 		}
 		defer file.Close()
-		stat, err := file.Stat()
+		info, err := file.Stat()
 		if err != nil {
 			panic(err)
 		}
@@ -93,7 +95,7 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 		creationTime := v1.Time{}
 		header := &tar.Header{
 			Name:     fmt.Sprintf("usr/local/bin/docker-credential-%s", helper),
-			Size:     stat.Size(),
+			Size:     info.Size(),
 			Typeflag: tar.TypeReg,
 			// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
 			// Use a fixed Mode, so that this isn't sensitive to the directory and umask

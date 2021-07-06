@@ -19,6 +19,7 @@ if [[ ! -f docker-credential-gcr ]]; then
   fi
   shasum -a 256 docker-credential-gcr.tar.gz | grep "^${GCR_HELPER_TARBALL_SHA256}  "
   tar -xvf docker-credential-gcr.tar.gz
+  rm -f docker-credential-gcr.tar.gz
 fi
 
 shasum -a 256 docker-credential-gcr | grep "^${GCR_HELPER_BINARY_SHA256}  "

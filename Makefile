@@ -1,8 +1,12 @@
-.PHONE: fetch-helpers
+.PHONY: fetch-helpers
 fetch-helpers:
 	scripts/fetch-helper-acr-linux.sh
 	scripts/fetch-helper-ecr-login.sh
 	scripts/fetch-helper-gcr.sh
+
+.PHONY: pkger
+pkger:
+	go run cmd/pkger-gen/main.go
 
 .PHONY: build
 build:

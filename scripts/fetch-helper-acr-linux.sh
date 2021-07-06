@@ -21,6 +21,7 @@ if [[ ! -f docker-credential-acr-linux ]]; then
   shasum -a 256 docker-credential-acr-linux-amd64.tar.gz | grep "^${ACR_HELPER_TARBALL_SHA256}  "
   tar -xvf docker-credential-acr-linux-amd64.tar.gz
   rm -f config-edit # this file is not needed
+  rm -f docker-credential-acr-linux-amd64.tar.gz
 fi
 
 shasum -a 256 docker-credential-acr-linux | grep "^${ACR_HELPER_BINARY_SHA256}  "
