@@ -4,8 +4,8 @@ fetch-helpers:
 	scripts/fetch-helper-ecr-login.sh
 	scripts/fetch-helper-gcr.sh
 
-.PHONY: pkger
-pkger:
+.PHONY: pkger-gen
+pkger-gen:
 	go run cmd/pkger-gen/main.go
 
 .PHONY: build

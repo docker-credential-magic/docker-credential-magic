@@ -14,7 +14,7 @@ make fetch-helpers
 Next, run our custom [pkger](https://github.com/markbates/pkger) script:
 
 ```
-make pkger
+make pkger-gen
 ```
 
 This will create the file `pkged.go` in `cmd/docker-credential-magic/`, which
