@@ -176,6 +176,6 @@ $ docker run -it --rm --entrypoint sh -v $(pwd)/sa.json:/sa.json \
 /workspace # echo 'hello world' > artifact.txt
 /workspace # echo '{}' > config.json
 /workspace # oras push --manifest-config config.json:application/vnd.oci.image.manifest.v1+json \
-                us-central1-docker.pkg.dev/docker-credential-magic/demoo:1.0 \
+                us-central1-docker.pkg.dev/docker-credential-magic/demo:1.0 \
                 artifact.txt:application/vnd.oci.image.layer.v1.tar+gzip
 ```
