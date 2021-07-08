@@ -45,7 +45,9 @@ Which will produce a new image in your local Docker engine named the following:
 <ref>.magic
 ```
 
-#### Example
+#### Examples
+
+##### cosign
 
 The following is an example of augmenting the image for [cosign](https://github.com/sigstore/cosign):
 
@@ -85,6 +87,62 @@ FLAGS
 ```
 $ docker run --rm --entrypoint docker-credential-gcr \
     gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic help
+Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
+
+Subcommands:
+	clear            remove all stored credentials
+	commands         list all command names
+	help             describe subcommands and their syntax
+	version          print the version of the binary to stdout
+
+Subcommands for Config:
+	config           configure the credential helper
+	configure-docker  configures the Docker client to use docker-credential-gcr
+
+Subcommands for Docker credential store API:
+	erase            (UNIMPLEMENTED) erase any stored credentials for the server specified via stdin
+	get              for the server specified via stdin, return the stored credentials via stdout
+	list             (UNIMPLEMENTED) list all stored credentials
+	store            (UNIMPLEMENTED) for the specified server, store the credentials provided via stdin
+
+Subcommands for GCR authentication:
+	gcr-login        log in to GCR
+	gcr-logout       log out from GCR
+
+```
+
+##### oras
+
+The following is an example of augmenting the image for [oras](https://github.com/oras-project/oras):
+
+```
+$ bin/docker-credential-magic ghcr.io/oras-project/oras:v0.12.0
+Loaded image: ghcr.io/oras-project/oras:v0.12.0.magic
+```
+
+```
+$ docker run --rm \
+    ghcr.io/oras-project/oras:v0.12.0.magic -h
+Usage:
+  oras [command]
+
+Available Commands:
+  help        Help about any command
+  login       Log in to a remote registry
+  logout      Log out from a remote registry
+  pull        Pull files from remote registry
+  push        Push files to remote registry
+  version     Show the oras version information
+
+Flags:
+  -h, --help   help for oras
+
+Use "oras [command] --help" for more information about a command.
+```
+
+```
+$ docker run --rm --entrypoint docker-credential-gcr \
+    ghcr.io/oras-project/oras:v0.12.0.magic help
 Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
 
 Subcommands:
