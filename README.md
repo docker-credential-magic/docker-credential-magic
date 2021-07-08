@@ -166,3 +166,16 @@ Subcommands for GCR authentication:
 	gcr-logout       log out from GCR
 
 ```
+
+```
+$ docker run -it --rm --entrypoint sh -v $(pwd)/sa.json:/sa.json \
+    -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
+    ghcr.io/oras-project/oras:v0.12.0.magic
+/workspace # mkdir ~/.docker
+/workspace # echo '{"credHelpers": {"us-central1-docker.pkg.dev": "gcr"}}' > ~/.docker/config.json
+/workspace # echo 'hello world' > artifact.txt
+/workspace # echo '{}' > config.json
+/workspace # oras push --manifest-config config.json:application/vnd.oci.image.manifest.v1+json \
+                us-central1-docker.pkg.dev/docker-credential-magic/demoo:1.0 \
+                artifact.txt:application/vnd.oci.image.layer.v1.tar+gzip
+```

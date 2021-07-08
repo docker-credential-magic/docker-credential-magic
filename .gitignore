@@ -20,3 +20,4 @@ vendor/
 bin/
 credential-helpers/
 cmd/docker-credential-magic/pkged.go
+sa.json
