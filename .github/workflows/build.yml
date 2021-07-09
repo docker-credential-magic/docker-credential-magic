@@ -13,17 +13,23 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '1.16'
-      - name: Run integration test
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
+      - name: Build binary
         run: |
           make fetch-helpers
           make pkger-gen
           make vendor build
+      - name: Test binary on existing remote image
+        run: |
           bin/docker-credential-magic ghcr.io/oras-project/oras:v0.12.0
           docker run --rm ghcr.io/oras-project/oras:v0.12.0.magic -h
           docker run --rm --entrypoint docker-credential-gcr \
               ghcr.io/oras-project/oras:v0.12.0.magic help
+          docker run --rm --entrypoint docker-credential-ecr-login \
+              ghcr.io/oras-project/oras:v0.12.0.magic -v
+      - name: Integration test (Google)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
+        run: |
           echo "${GOOGLE_APPLICATION_CREDENTIALS_BASE64}" | base64 -d > sa.json
           docker run --rm --entrypoint sh \
               -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
@@ -36,6 +42,7 @@ jobs:
                 oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                   us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6 \
                   nginx-9.3.6.tgz:application/tar+gzip'
+          rm -rf tmp/
           mkdir tmp/
           docker run --rm --entrypoint sh \
               -v ${PWD}/tmp:/workspace \
@@ -46,4 +53,38 @@ jobs:
                 echo "{\"credHelpers\": {\"us-central1-docker.pkg.dev\": \"gcr\"}}" > ~/.docker/config.json && \
                 oras pull -a \
                   us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6'
+          ls -la tmp/ | grep nginx-9.3.6.tgz
+      - name: Integration test (Amazon)
+        env:
+          AWS_REGISTRY_ENDPOINT: ${{ secrets.AWS_REGISTRY_ENDPOINT }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          docker run --rm --entrypoint sh \
+              -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
+              -e AWS_REGISTRY_ENDPOINT="${AWS_REGISTRY_ENDPOINT}" \
+              -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+              -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+              -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'mkdir ~/.docker && \
+                echo "{\"credHelpers\": {\"${AWS_REGISTRY_ENDPOINT}\": \"ecr-login\"}}" > ~/.docker/config.json && \
+                echo "{}" > config.json && \
+                oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
+                  ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
+                  nginx-9.3.6.tgz:application/tar+gzip'
+          rm -rf tmp/
+          mkdir tmp/
+          docker run --rm --entrypoint sh \
+              -v ${PWD}/tmp:/workspace \
+              -e AWS_REGISTRY_ENDPOINT="${AWS_REGISTRY_ENDPOINT}" \
+              -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+              -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+              -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'mkdir ~/.docker && \
+                echo "{\"credHelpers\": {\"${AWS_REGISTRY_ENDPOINT}\": \"ecr-login\"}}" > ~/.docker/config.json && \
+                oras pull -a \
+                  ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
           ls -la tmp/ | grep nginx-9.3.6.tgz
