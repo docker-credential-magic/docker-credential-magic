@@ -14,6 +14,8 @@ jobs:
         with:
           go-version: '1.16'
       - name: Run integration test
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
         run: |
           make fetch-helpers
           make pkger-gen
@@ -22,3 +24,26 @@ jobs:
           docker run --rm ghcr.io/oras-project/oras:v0.12.0.magic -h
           docker run --rm --entrypoint docker-credential-gcr \
               ghcr.io/oras-project/oras:v0.12.0.magic help
+          echo "${GOOGLE_APPLICATION_CREDENTIALS_BASE64}" | base64 -d > sa.json
+          docker run -it --rm --entrypoint sh \
+              -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
+              -v ${PWD}/sa.json:/sa.json \
+              -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'mkdir ~/.docker && \
+                echo "{\"credHelpers\": {\"us-central1-docker.pkg.dev\": \"gcr\"}}" > ~/.docker/config.json && \
+                echo "{}" > config.json && \
+                oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
+                  us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6 \
+                  nginx-9.3.6.tgz:application/tar+gzip'
+          mkdir tmp/
+          docker run -it --rm --entrypoint sh \
+              -v ${PWD}/tmp:/workspace \
+              -v ${PWD}/sa.json:/sa.json \
+              -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'mkdir ~/.docker && \
+                echo "{\"credHelpers\": {\"us-central1-docker.pkg.dev\": \"gcr\"}}" > ~/.docker/config.json && \
+                oras pull -a \
+                  us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6'
+          ls -la tmp/ | grep nginx-9.3.6.tgz
