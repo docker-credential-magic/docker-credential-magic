@@ -168,13 +168,14 @@ Subcommands for GCR authentication:
 ```
 
 ```
-$ docker run -it --rm --entrypoint sh -v $(pwd)/sa.json:/sa.json \
+$ docker run -it --rm --entrypoint sh \
+    -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
+    -v ${PWD}/sa.json:/sa.json \
     -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
     ghcr.io/oras-project/oras:v0.12.0.magic
 /workspace # mkdir ~/.docker
 /workspace # echo '{"credHelpers": {"us-central1-docker.pkg.dev": "gcr"}}' > ~/.docker/config.json
 /workspace # echo '{}' > config.json
-/workspace # wget https://charts.bitnami.com/bitnami/nginx-9.3.6.tgz
 /workspace # oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                 us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6 \
                 nginx-9.3.6.tgz:application/tar+gzip
