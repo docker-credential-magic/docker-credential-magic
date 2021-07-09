@@ -173,9 +173,9 @@ $ docker run -it --rm --entrypoint sh -v $(pwd)/sa.json:/sa.json \
     ghcr.io/oras-project/oras:v0.12.0.magic
 /workspace # mkdir ~/.docker
 /workspace # echo '{"credHelpers": {"us-central1-docker.pkg.dev": "gcr"}}' > ~/.docker/config.json
-/workspace # echo 'hello world' > artifact.txt
 /workspace # echo '{}' > config.json
-/workspace # oras push --manifest-config config.json:application/vnd.oci.image.manifest.v1+json \
-                us-central1-docker.pkg.dev/docker-credential-magic/demo:1.0 \
-                artifact.txt:application/vnd.oci.image.layer.v1.tar+gzip
+/workspace # wget https://charts.bitnami.com/bitnami/nginx-9.3.6.tgz
+/workspace # oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
+                us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6 \
+                nginx-9.3.6.tgz:application/tar+gzip
 ```
