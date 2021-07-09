@@ -179,4 +179,7 @@ $ docker run -it --rm --entrypoint sh \
 /workspace # oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                 us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6 \
                 nginx-9.3.6.tgz:application/tar+gzip
+Uploading e58cb1bb3a26 nginx-9.3.6.tgz
+Pushed us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6
+Digest: sha256:51c004e6c7abfe03259aa900a8a62d12c183f3103dd3d6ca3ed1e15360fcda6c
 ```
