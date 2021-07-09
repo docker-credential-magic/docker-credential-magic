@@ -1,0 +1,24 @@
+name: build
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Run integration test
+        run: |
+          make fetch-helpers
+          make pkger-gen
+          make vendor build
+          bin/docker-credential-magic ghcr.io/oras-project/oras:v0.12.0
+          docker run --rm ghcr.io/oras-project/oras:v0.12.0.magic -h
+          docker run --rm --entrypoint docker-credential-gcr \
+              ghcr.io/oras-project/oras:v0.12.0.magic help
