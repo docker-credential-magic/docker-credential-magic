@@ -16,11 +16,12 @@ jobs:
       - name: Build binary
         run: |
           make fetch-helpers
+          make build-helper
           make pkger-gen
-          make vendor build
+          make build
       - name: Test binary on existing remote image
         run: |
-          bin/docker-credential-magic ghcr.io/oras-project/oras:v0.12.0
+          bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0
           docker run --rm ghcr.io/oras-project/oras:v0.12.0.magic -h
           docker run --rm --entrypoint docker-credential-gcr \
               ghcr.io/oras-project/oras:v0.12.0.magic help

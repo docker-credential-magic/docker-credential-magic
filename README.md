@@ -11,13 +11,19 @@ First, fetch all credential helper binaries into `credential-helpers/`:
 make fetch-helpers
 ```
 
-Next, run our custom [pkger](https://github.com/markbates/pkger) script:
+Next, build our custom `magic` helper:
+
+```
+make build-helper
+```
+
+Finally, run our custom [pkger](https://github.com/markbates/pkger) script:
 
 ```
 make pkger-gen
 ```
 
-This will create the file `pkged.go` in `cmd/docker-credential-magic/`, which
+This will create the file `pkged.go` in `cmd/docker-credential-magician/`, which
 allows us to build a single binary with all supported credential helpers baked in.
 
 The downside is that our binary is larger that normal (~30mb), but the upside
@@ -30,13 +36,13 @@ After running the steps above related to `pkged.go`,
 run the following:
 
 ```
-make vendor build
+make build
 ```
 
 ### Run binary
 
 ```
-bin/docker-credential-magic <ref>
+bin/docker-credential-magician <ref>
 ```
 
 Which will produce a new image in your local Docker engine named the following:
@@ -52,7 +58,7 @@ Which will produce a new image in your local Docker engine named the following:
 The following is an example of augmenting the image for [cosign](https://github.com/sigstore/cosign):
 
 ```
-$ bin/docker-credential-magic gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
+$ bin/docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
 Loaded image: gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic
 ```
 
@@ -116,7 +122,7 @@ Subcommands for GCR authentication:
 The following is an example of augmenting the image for [oras](https://github.com/oras-project/oras):
 
 ```
-$ bin/docker-credential-magic ghcr.io/oras-project/oras:v0.12.0
+$ bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0
 Loaded image: ghcr.io/oras-project/oras:v0.12.0.magic
 ```
 

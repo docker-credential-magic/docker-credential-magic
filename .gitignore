@@ -19,6 +19,6 @@ vendor/
 .vscode/
 bin/
 credential-helpers/
-cmd/docker-credential-magic/pkged.go
+cmd/docker-credential-magician/pkged.go
 sa.json
 tmp/

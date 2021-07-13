@@ -22,6 +22,7 @@ var helpers = []string{
 	"acr-linux",
 	"ecr-login",
 	"gcr",
+	"magic", // our custom helper
 }
 
 type (
@@ -37,7 +38,7 @@ type (
 
 func parseConfig() config {
 	if len(os.Args) < 2 {
-		panic("usage: docker-credential-magic <ref>")
+		panic("usage: docker-credential-magician <ref>")
 	}
 	origRef := os.Args[1]
 	return config{
