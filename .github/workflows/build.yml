@@ -23,10 +23,12 @@ jobs:
         run: |
           bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0
           docker run --rm ghcr.io/oras-project/oras:v0.12.0.magic -h
-          docker run --rm --entrypoint docker-credential-gcr \
-              ghcr.io/oras-project/oras:v0.12.0.magic help
+          docker run --rm --entrypoint docker-credential-acr \
+              ghcr.io/oras-project/oras:v0.12.0.magic -h
           docker run --rm --entrypoint docker-credential-ecr-login \
               ghcr.io/oras-project/oras:v0.12.0.magic -v
+          docker run --rm --entrypoint docker-credential-gcr \
+              ghcr.io/oras-project/oras:v0.12.0.magic help
       - name: Integration test (Google)
         env:
           GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}

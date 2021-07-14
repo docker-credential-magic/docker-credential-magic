@@ -19,10 +19,14 @@ import (
 )
 
 var helpers = []string{
-	"acr-linux",
+	"acr-env",
 	"ecr-login",
 	"gcr",
 	"magic", // our custom helper
+}
+
+var helperRenameMap = map[string]string{
+	"acr-env": "acr",
 }
 
 type (
@@ -95,7 +99,7 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 
 		creationTime := v1.Time{}
 		header := &tar.Header{
-			Name:     fmt.Sprintf("usr/local/bin/docker-credential-%s", helper),
+			Name:     fmt.Sprintf("usr/local/bin/docker-credential-%s", getHelperName(helper)),
 			Size:     info.Size(),
 			Typeflag: tar.TypeReg,
 			// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
@@ -126,4 +130,11 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 	}
 
 	return img
+}
+
+func getHelperName(name string) string {
+	if val, ok := helperRenameMap[name]; ok {
+		return val
+	}
+	return name
 }
