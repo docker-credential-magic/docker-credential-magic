@@ -53,6 +53,29 @@ Which will produce a new image in your local Docker engine named the following:
 
 #### Examples
 
+##### helm
+
+The following is an example of augmenting the image for [helm](https://github.com/helm/helm):
+
+```
+$ bin/docker-credential-magician <image>
+Loaded image: ghcr.io/bloodorangeio/helm:hip-6.magic
+```
+
+```
+$ docker run --rm \
+    ghcr.io/bloodorangeio/helm:hip-6.magic -h
+The Kubernetes package manager
+...
+```
+
+```
+$ docker run --rm --entrypoint docker-credential-gcr \
+    ghcr.io/bloodorangeio/helm:hip-6.magic help
+Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
+...
+```
+
 ##### cosign
 
 The following is an example of augmenting the image for [cosign](https://github.com/sigstore/cosign):

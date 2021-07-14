@@ -22,3 +22,6 @@ credential-helpers/
 cmd/docker-credential-magician/pkged.go
 sa.json
 tmp/
+.cache/
+.config/
+.docker/

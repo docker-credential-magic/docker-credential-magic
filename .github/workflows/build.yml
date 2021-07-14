@@ -29,6 +29,8 @@ jobs:
               ghcr.io/oras-project/oras:v0.12.0.magic -v
           docker run --rm --entrypoint docker-credential-gcr \
               ghcr.io/oras-project/oras:v0.12.0.magic help
+          bin/docker-credential-magician ghcr.io/bloodorangeio/helm:hip-6
+          docker run --rm ghcr.io/bloodorangeio/helm:hip-6.magic -h
       - name: Integration test (Google)
         env:
           GOOGLE_REGISTRY_ENDPOINT: ${{ secrets.GOOGLE_REGISTRY_ENDPOINT }}
@@ -101,30 +103,30 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
-          docker run --rm --entrypoint sh \
-              -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
+          mkdir -p .config/helm/
+          echo "{\"credsStore\": \"acr-env\"}" > .config/helm/registry.json
+          docker run --rm \
+              -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/nginx-9.3.6.tgz \
+              -v ${PWD}/.config:/.config \
               -e AZURE_REGISTRY_ENDPOINT="${AZURE_REGISTRY_ENDPOINT}" \
               -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
               -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
               -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
-                'mkdir ~/.docker && \
-                echo "{\"credHelpers\": {\"${AZURE_REGISTRY_ENDPOINT}\": \"acr-env\"}}" > ~/.docker/config.json && \
-                echo "{}" > config.json && \
-                oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
-                  ${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
-                  nginx-9.3.6.tgz:application/tar+gzip'
+              ghcr.io/bloodorangeio/helm:hip-6.magic \
+                push --debug /nginx-9.3.6.tgz \
+                oci://${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo
           rm -rf tmp/
           mkdir tmp/
-          docker run --rm --entrypoint sh \
-              -v ${PWD}/tmp:/workspace \
+          docker run --rm \
+              -v ${PWD}/tmp:/tmp \
+              -v ${PWD}/.config:/.config \
+              -w /tmp \
               -e AZURE_REGISTRY_ENDPOINT="${AZURE_REGISTRY_ENDPOINT}" \
               -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
               -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
               -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
-                'mkdir ~/.docker && \
-                echo "{\"credHelpers\": {\"${AZURE_REGISTRY_ENDPOINT}\": \"acr-env\"}}" > ~/.docker/config.json && \
-                oras pull -a \
-                  ${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
+              ghcr.io/bloodorangeio/helm:hip-6.magic \
+                pull --debug \
+                oci://${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx \
+                --version 9.3.6
           ls -la tmp/ | grep nginx-9.3.6.tgz
