@@ -94,37 +94,37 @@ jobs:
                 oras pull -a \
                   ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
           ls -la tmp/ | grep nginx-9.3.6.tgz
-    - name: Integration test (Microsoft)
-      env:
-        AZURE_REGISTRY_ENDPOINT: ${{ secrets.AZURE_REGISTRY_ENDPOINT }}
-        AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-        AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      run: |
-        docker run --rm --entrypoint sh \
-            -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
-            -e AZURE_REGISTRY_ENDPOINT="${AZURE_REGISTRY_ENDPOINT}" \
-            -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
-            -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
-            -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-            ghcr.io/oras-project/oras:v0.12.0.magic -c \
-              'mkdir ~/.docker && \
-              echo "{\"credHelpers\": {\"${AZURE_REGISTRY_ENDPOINT}\": \"acr-env\"}}" > ~/.docker/config.json && \
-              echo "{}" > config.json && \
-              oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
-                ${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
-                nginx-9.3.6.tgz:application/tar+gzip'
-        rm -rf tmp/
-        mkdir tmp/
-        docker run --rm --entrypoint sh \
-            -v ${PWD}/tmp:/workspace \
-            -e AZURE_REGISTRY_ENDPOINT="${AZURE_REGISTRY_ENDPOINT}" \
-            -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
-            -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
-            -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-            ghcr.io/oras-project/oras:v0.12.0.magic -c \
-              'mkdir ~/.docker && \
-              echo "{\"credHelpers\": {\"${AZURE_REGISTRY_ENDPOINT}\": \"acr-env\"}}" > ~/.docker/config.json && \
-              oras pull -a \
-                ${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
-        ls -la tmp/ | grep nginx-9.3.6.tgz
+      - name: Integration test (Microsoft)
+        env:
+          AZURE_REGISTRY_ENDPOINT: ${{ secrets.AZURE_REGISTRY_ENDPOINT }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          docker run --rm --entrypoint sh \
+              -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
+              -e AZURE_REGISTRY_ENDPOINT="${AZURE_REGISTRY_ENDPOINT}" \
+              -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
+              -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
+              -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'mkdir ~/.docker && \
+                echo "{\"credHelpers\": {\"${AZURE_REGISTRY_ENDPOINT}\": \"acr-env\"}}" > ~/.docker/config.json && \
+                echo "{}" > config.json && \
+                oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
+                  ${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
+                  nginx-9.3.6.tgz:application/tar+gzip'
+          rm -rf tmp/
+          mkdir tmp/
+          docker run --rm --entrypoint sh \
+              -v ${PWD}/tmp:/workspace \
+              -e AZURE_REGISTRY_ENDPOINT="${AZURE_REGISTRY_ENDPOINT}" \
+              -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
+              -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
+              -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'mkdir ~/.docker && \
+                echo "{\"credHelpers\": {\"${AZURE_REGISTRY_ENDPOINT}\": \"acr-env\"}}" > ~/.docker/config.json && \
+                oras pull -a \
+                  ${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
+          ls -la tmp/ | grep nginx-9.3.6.tgz
