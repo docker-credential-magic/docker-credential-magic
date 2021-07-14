@@ -1,8 +1,8 @@
 .PHONY: fetch-helpers
 fetch-helpers:
-	scripts/fetch-helper-acr-env.sh
-	scripts/fetch-helper-ecr-login.sh
-	scripts/fetch-helper-gcr.sh
+	scripts/helpers/fetch-helper-acr-env.sh
+	scripts/helpers/fetch-helper-ecr-login.sh
+	scripts/helpers/fetch-helper-gcr.sh
 
 .PHONY: vendor
 vendor:

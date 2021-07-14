@@ -7,7 +7,7 @@ ACR_HELPER_TARBALL_SHA256="97a2d8079317dcc6807347689a6775779d31e1f745890aca27042
 ACR_HELPER_BINARY_SHA256="98ea9e979fd9a1094209b39f783e6a4d8c5d864f979d8078cdc348e2c6d39530"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd $DIR/../
+cd $DIR/../../
 
 mkdir -p credential-helpers/
 cd credential-helpers/

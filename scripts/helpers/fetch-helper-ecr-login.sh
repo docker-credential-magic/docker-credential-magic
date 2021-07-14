@@ -6,7 +6,7 @@ ECR_HELPER_VERSION="0.5.0"
 ECR_HELPER_BINARY_SHA256="a0ae9a66b1f41f3312785ec5e17404c7fd2a16a35703c9ea7c050406e20fc503"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd $DIR/../
+cd $DIR/../../
 
 mkdir -p credential-helpers/
 cd credential-helpers/

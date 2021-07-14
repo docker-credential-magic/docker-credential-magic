@@ -7,7 +7,7 @@ GCR_HELPER_TARBALL_SHA256="4fca8441c41802f4bcc4912672c55d4b1232decb90639f8a684d3
 GCR_HELPER_BINARY_SHA256="716dd54138618abefe02e40197240864500f204ca58668295c49d8a72efbaae1"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd $DIR/../
+cd $DIR/../../
 
 mkdir -p credential-helpers/
 cd credential-helpers/
