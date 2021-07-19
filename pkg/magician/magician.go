@@ -186,3 +186,4 @@ func updateDockerConfig(cf *v1.ConfigFile) {
 	}
 	cf.Config.Env = append(cf.Config.Env, "DOCKER_CONFIG="+pathPrefix)
 }
+

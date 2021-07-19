@@ -1,0 +1,63 @@
+builds:
+  - id: docker-credential-magic
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/docker-credential-magic/main.go
+    binary: docker-credential-magic
+    flags:
+      - -trimpath
+    ldflags:
+      - "-s -w -X github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magic.Version={{.Version}}"
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - 386
+    goos:
+      - linux
+      - darwin
+      - windows
+    ignore:
+      - goos: windows
+        goarch: 386
+
+  - id: docker-credential-magician
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/docker-credential-magician/main.go
+    binary: docker-credential-magician
+    flags:
+      - -trimpath
+    ldflags:
+      - "-s -w -X github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magician.Version={{.Version}}"
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - 386
+    goos:
+      - linux
+      - darwin
+      - windows
+    ignore:
+      - goos: windows
+        goarch: 386
+
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

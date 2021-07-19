@@ -6,8 +6,23 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 )
+
+// Version can be set via:
+// -ldflags="-X 'github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magic.Version=$TAG'"
+var Version string
+
+func init() {
+	if Version == "" {
+		i, ok := debug.ReadBuildInfo()
+		if !ok {
+			return
+		}
+		Version = i.Main.Version
+	}
+}
 
 const (
 	helperACREnv   = "acr-env"
@@ -39,30 +54,30 @@ func main() {
 	rawInput := scanner.Text()
 
 	/*
-	rootCmd := &cobra.Command{
-		Use:   "docker-credential-magic",
-		Short: "Credential helper which proxies auth to other helpers based on domain name",
-	}
-
-	getCmd := &cobra.Command{
-		Use: "get",
-		Short: "For the server specified via stdin, return the stored credentials via stdout",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return get(rawInput)
-		},
-	}
-
-	rootCmd.AddCommand(getCmd)
-
-	if err := rootCmd.Execute(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitError.ExitCode())
+		rootCmd := &cobra.Command{
+			Use:   "docker-credential-magic",
+			Short: "Credential helper which proxies auth to other helpers based on domain name",
 		}
-		log.Fatalln(err.Error())
-	}
-}
 
-func get(rawInput string) error {
+		getCmd := &cobra.Command{
+			Use: "get",
+			Short: "For the server specified via stdin, return the stored credentials via stdout",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return get(rawInput)
+			},
+		}
+
+		rootCmd.AddCommand(getCmd)
+
+		if err := rootCmd.Execute(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				os.Exit(exitError.ExitCode())
+			}
+			log.Fatalln(err.Error())
+		}
+	}
+
+	func get(rawInput string) error {
 	*/
 
 	domain, err := parseDomain(rawInput)
