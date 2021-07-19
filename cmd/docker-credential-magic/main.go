@@ -93,6 +93,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println()
 }
 
 func parseDomain(s string) (string, error) {
