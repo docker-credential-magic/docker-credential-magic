@@ -120,6 +120,24 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 		}
 	}
 
+	// Create our custom Docker config file, with magic catch-all
+	dockerConfigFileRaw := "{\"credsStore\":\"magic\"}"
+	creationTime := v1.Time{}
+	name := fmt.Sprintf("%s/config.json", strings.TrimPrefix(pathPrefix, "/"))
+	header := &tar.Header{
+		Name:     name,
+		Size:     int64(len(dockerConfigFileRaw)),
+		Typeflag: tar.TypeReg,
+		Mode:     0555,
+		ModTime:  creationTime.Time,
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		panic(err)
+	}
+	if _, err := io.Copy(tw, strings.NewReader(dockerConfigFileRaw)); err != nil {
+		panic(err)
+	}
+
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
 		panic(err)
@@ -137,6 +155,7 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 
 	cfg = cfg.DeepCopy()
 	updatePath(cfg)
+	updateDockerConfig(cfg)
 
 	img, err = mutate.ConfigFile(img, cfg)
 	if err != nil {
@@ -166,4 +185,18 @@ func updatePath(cf *v1.ConfigFile) {
 
 	// If we get here, we never saw PATH.
 	cf.Config.Env = append(cf.Config.Env, "PATH="+newPath)
+}
+
+func updateDockerConfig(cf *v1.ConfigFile) {
+	for i, env := range cf.Config.Env {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := parts[0]
+		if key == "DOCKER_CONFIG" {
+			cf.Config.Env[i] = "DOCKER_CONFIG=" + pathPrefix
+		}
+	}
+	cf.Config.Env = append(cf.Config.Env, "DOCKER_CONFIG="+pathPrefix)
 }

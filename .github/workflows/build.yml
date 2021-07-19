@@ -43,9 +43,7 @@ jobs:
               -e GOOGLE_REGISTRY_ENDPOINT="${GOOGLE_REGISTRY_ENDPOINT}" \
               -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
               ghcr.io/oras-project/oras:v0.12.0.magic -c \
-                'mkdir ~/.docker && \
-                echo "{\"credHelpers\": {\"${GOOGLE_REGISTRY_ENDPOINT}\": \"gcr\"}}" > ~/.docker/config.json && \
-                echo "{}" > config.json && \
+                'echo "{}" > config.json && \
                 oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                   ${GOOGLE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
                   nginx-9.3.6.tgz:application/tar+gzip'
@@ -57,9 +55,7 @@ jobs:
               -e GOOGLE_REGISTRY_ENDPOINT="${GOOGLE_REGISTRY_ENDPOINT}" \
               -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
               ghcr.io/oras-project/oras:v0.12.0.magic -c \
-                'mkdir ~/.docker && \
-                echo "{\"credHelpers\": {\"${GOOGLE_REGISTRY_ENDPOINT}\": \"gcr\"}}" > ~/.docker/config.json && \
-                oras pull -a \
+                'oras pull -a \
                   ${GOOGLE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
           ls -la tmp/ | grep nginx-9.3.6.tgz
       - name: Integration test (Amazon)
@@ -76,9 +72,7 @@ jobs:
               -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
               -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
               ghcr.io/oras-project/oras:v0.12.0.magic -c \
-                'mkdir ~/.docker && \
-                echo "{\"credHelpers\": {\"${AWS_REGISTRY_ENDPOINT}\": \"ecr-login\"}}" > ~/.docker/config.json && \
-                echo "{}" > config.json && \
+                'echo "{}" > config.json && \
                 oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                   ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
                   nginx-9.3.6.tgz:application/tar+gzip'
@@ -91,9 +85,7 @@ jobs:
               -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
               -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
               ghcr.io/oras-project/oras:v0.12.0.magic -c \
-                'mkdir ~/.docker && \
-                echo "{\"credHelpers\": {\"${AWS_REGISTRY_ENDPOINT}\": \"ecr-login\"}}" > ~/.docker/config.json && \
-                oras pull -a \
+                'oras pull -a \
                   ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
           ls -la tmp/ | grep nginx-9.3.6.tgz
       - name: Integration test (Microsoft)
@@ -104,7 +96,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           mkdir -p .config/helm/
-          echo "{\"credsStore\": \"acr-env\"}" > .config/helm/registry.json
+          echo "{\"credsStore\": \"magic\"}" > .config/helm/registry.json
           docker run --rm \
               -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/nginx-9.3.6.tgz \
               -v ${PWD}/.config:/.config \
