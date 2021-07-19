@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
@@ -30,71 +29,41 @@ var helpers = []string{
 }
 
 type (
-	config struct {
-		OrigRef string
-		NewRef  string
-	}
+	MagicOption func(*magicOperation)
 
-	daemonResponseLine struct {
-		Stream string
-	}
+	magicOperation struct{}
 )
 
-func parseConfig() config {
-	if len(os.Args) < 2 {
-		panic("usage: docker-credential-magician <ref>")
+func Abracadabra(ref string, options ...MagicOption) error {
+	operation := &magicOperation{}
+	for _, option := range options {
+		option(operation)
 	}
-	origRef := os.Args[1]
-	return config{
-		OrigRef: origRef,
-		NewRef:  fmt.Sprintf("%s.magic", origRef),
-	}
-}
 
-func pullBaseImage(ref string) v1.Image {
+	newRef := fmt.Sprintf("%s.magic", ref)
+
 	base, err := crane.Pull(ref)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return base
-}
 
-func createTag(ref string) name.Tag {
-	tag, err := name.NewTag(ref)
+	tag, err := name.NewTag(newRef)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return tag
-}
 
-func pushImageToLocalDaemon(tag name.Tag, base v1.Image) {
-	if responseRaw, err := daemon.Write(tag, base); err != nil {
-		panic(err)
-	} else {
-		for _, line := range strings.Split(responseRaw, "\n") {
-			var lineParsed daemonResponseLine
-			if err := json.Unmarshal([]byte(line), &lineParsed); err == nil {
-				if stream := lineParsed.Stream; stream != "" {
-					fmt.Printf(stream)
-				}
-			}
-		}
-	}
-}
-
-func appendCredentialHelpers(base v1.Image) v1.Image {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 
 	for _, helper := range helpers {
 		file, err := pkger.Open(fmt.Sprintf("/credential-helpers/docker-credential-%s", helper))
 		if err != nil {
-			panic(err)
+			return err
 		}
 		defer file.Close()
 		info, err := file.Stat()
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		creationTime := v1.Time{}
@@ -112,11 +81,11 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 		}
 
 		if err := tw.WriteHeader(header); err != nil {
-			panic(err)
+			return err
 		}
 
 		if _, err := io.Copy(tw, file); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -132,25 +101,25 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 		ModTime:  creationTime.Time,
 	}
 	if err := tw.WriteHeader(header); err != nil {
-		panic(err)
+		return err
 	}
 	if _, err := io.Copy(tw, strings.NewReader(dockerConfigFileRaw)); err != nil {
-		panic(err)
+		return err
 	}
 
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	img, err := mutate.AppendLayers(base, newLayer)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	cfg, err := img.ConfigFile()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	cfg = cfg.DeepCopy()
@@ -159,10 +128,26 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 
 	img, err = mutate.ConfigFile(img, cfg)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	return img
+	if responseRaw, err := daemon.Write(tag, img); err != nil {
+		return err
+	} else {
+		type daemonResponseLine struct {
+			Stream string
+		}
+		for _, line := range strings.Split(responseRaw, "\n") {
+			var lineParsed daemonResponseLine
+			if err := json.Unmarshal([]byte(line), &lineParsed); err == nil {
+				if stream := lineParsed.Stream; stream != "" {
+					fmt.Printf(stream)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // Adapted from https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765

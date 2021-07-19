@@ -1,18 +1,15 @@
 package main
 
+import "os"
+
 func main() {
-	// Parse command line args/settings
-	config := parseConfig()
+	if len(os.Args) < 2 {
+		panic("usage: docker-credential-magician <ref>")
+	}
+	ref := os.Args[1]
 
-	// Pull the remote image
-	base := pullBaseImage(config.OrigRef)
-
-	// Create a new tag, the original suffixed with ".magic"
-	tag := createTag(config.NewRef)
-
-	// Append credential helper binaries
-	img := appendCredentialHelpers(base)
-
-	// Save image locally
-	pushImageToLocalDaemon(tag, img)
+	err := Abracadabra(ref)
+	if err != nil {
+		panic(err)
+	}
 }
