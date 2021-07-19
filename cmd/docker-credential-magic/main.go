@@ -4,12 +4,9 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -41,6 +38,7 @@ func main() {
 	scanner.Scan()
 	rawInput := scanner.Text()
 
+	/*
 	rootCmd := &cobra.Command{
 		Use:   "docker-credential-magic",
 		Short: "Credential helper which proxies auth to other helpers based on domain name",
@@ -65,9 +63,12 @@ func main() {
 }
 
 func get(rawInput string) error {
+	*/
+
 	domain, err := parseDomain(rawInput)
 	if err != nil {
-		return err
+		//return err
+		panic(err)
 	}
 
 	helperExe, err := getHelperExecutable(domain)
@@ -75,16 +76,22 @@ func get(rawInput string) error {
 		if err == errorHelperNotFound {
 			// Anonymous token
 			fmt.Println(anonymousTokenResponse)
-			return nil
+			//return nil
+			panic(err)
 		}
-		return err
+		//return err
+		panic(err)
 	}
 
 	cmd := exec.Command(helperExe, "get")
 	cmd.Stdin = strings.NewReader(rawInput)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
-	return cmd.Run()
+	//return cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func parseDomain(s string) (string, error) {
