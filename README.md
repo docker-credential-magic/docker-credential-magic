@@ -1,4 +1,9 @@
 # docker-credential-magic
+
+[![GitHub Actions status](https://github.com/jdolitsky/docker-credential-magic/workflows/build/badge.svg)](https://github.com/jdolitsky/docker-credential-magic/actions?query=workflow%3Abuild+)
+
+![docker-credential-magic](./docker-credential-magic.png)
+
 Tool to augment existing images with various Docker credential helpers
 
 ## Development
