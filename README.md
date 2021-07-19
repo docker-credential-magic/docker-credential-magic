@@ -6,10 +6,8 @@
 
 This repo contains the source for two separate tools:
 
-- `docker-credential-magic` - A global Docker credential helper which proxies auth requests to other helpers
-  based on domain
-- `docker-credential-magician` - A tool to augment existing images with various Docker credential helpers
-  (including `magic`)
+- `docker-credential-magic` - credential helper which proxies auth to other helpers based on domain name
+- `docker-credential-magician` - tool to augment images with various credential helpers (including `magic`)
 
 The following third-party Docker credential helpers are currently supported:
 
