@@ -16,10 +16,10 @@ func main() {
 		panic(err)
 	}
 
-	info.Module.Path = filepath.Join(info.Module.Path, "cmd/docker-credential-magician")
-	info.Module.Dir = filepath.Join(info.Module.Dir, "cmd/docker-credential-magician")
+	info.Module.Path = filepath.Join(info.Module.Path, "pkg/magician")
+	info.Module.Dir = filepath.Join(info.Module.Dir, "pkg/magician")
 
-	fp := filepath.Join(info.Dir, "cmd/docker-credential-magician/pkged.go")
+	fp := filepath.Join(info.Dir, "pkg/magician/pkged.go")
 	os.RemoveAll(fp)
 
 	decls, err := parser.Parse(info, "/credential-helpers")

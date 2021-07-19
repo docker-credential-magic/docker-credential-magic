@@ -1,4 +1,4 @@
-package main
+package magician
 
 import (
 	"archive/tar"
