@@ -7,7 +7,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - "-s -w -X github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magic.Version={{.Version}}"
+      - "-s -w"
     goarch:
       - amd64
       - arm
@@ -29,7 +29,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - "-s -w -X github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magician.Version={{.Version}}"
+      - "-s -w"
     goarch:
       - amd64
       - arm

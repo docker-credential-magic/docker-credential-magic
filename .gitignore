@@ -25,3 +25,4 @@ tmp/
 .cache/
 .config/
 .docker/
+*.tar.gz

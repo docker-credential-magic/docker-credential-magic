@@ -15,14 +15,3 @@ The following third-party Docker credential helpers are currently supported:
 - [`ecr-login`](https://github.com/awslabs/amazon-ecr-credential-helper) - for Amazon Elastic Container Registry (ECR)
 - [`gcr`](https://github.com/GoogleCloudPlatform/docker-credential-gcr) - for Google Container Registry (GCR),
   Google Artifact Registry (GAR)
-
-## Installation
-
-Download [latest release](https://github.com/jdolitsky/docker-credential-magic/releases/latest).
-
-Install manually:
-
-```
-go install github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magic@latest
-go install github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magician@latest
-```

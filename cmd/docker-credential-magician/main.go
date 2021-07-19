@@ -3,26 +3,11 @@ package main
 import (
 	"log"
 	"os"
-	"runtime/debug"
 
 	"github.com/spf13/cobra"
 
 	"github.com/jdolitsky/docker-credential-magic/pkg/magician"
 )
-
-// Version can be set via:
-// -ldflags="-X 'github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magician.Version=$TAG'"
-var Version string
-
-func init() {
-	if Version == "" {
-		i, ok := debug.ReadBuildInfo()
-		if !ok {
-			return
-		}
-		Version = i.Main.Version
-	}
-}
 
 func main() {
 	rootCmd := &cobra.Command{

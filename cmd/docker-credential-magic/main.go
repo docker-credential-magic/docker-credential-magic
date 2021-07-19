@@ -6,23 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime/debug"
 	"strings"
 )
 
-// Version can be set via:
-// -ldflags="-X 'github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-magic.Version=$TAG'"
-var Version string
-
-func init() {
-	if Version == "" {
-		i, ok := debug.ReadBuildInfo()
-		if !ok {
-			return
-		}
-		Version = i.Main.Version
-	}
-}
 
 const (
 	helperACREnv   = "acr-env"
