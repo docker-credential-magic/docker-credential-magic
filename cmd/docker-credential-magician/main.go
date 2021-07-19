@@ -1,15 +1,24 @@
 package main
 
-import "os"
+import (
+	"log"
+	"os"
+
+	"github.com/spf13/cobra"
+)
 
 func main() {
-	if len(os.Args) < 2 {
-		panic("usage: docker-credential-magician <ref>")
+	rootCmd := &cobra.Command{
+		Use:   "docker-credential-magician",
+		Short: "Augment images with various credential helpers (including magic)",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ref := args[0]
+			return Abracadabra(ref)
+		},
 	}
-	ref := os.Args[1]
-
-	err := Abracadabra(ref)
-	if err != nil {
-		panic(err)
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatalln(err.Error())
+		os.Exit(1)
 	}
 }

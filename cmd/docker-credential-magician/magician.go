@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
@@ -141,7 +142,7 @@ func Abracadabra(ref string, options ...MagicOption) error {
 			var lineParsed daemonResponseLine
 			if err := json.Unmarshal([]byte(line), &lineParsed); err == nil {
 				if stream := lineParsed.Stream; stream != "" {
-					fmt.Printf(stream)
+					log.Println(strings.TrimSuffix(stream, "\n"))
 				}
 			}
 		}

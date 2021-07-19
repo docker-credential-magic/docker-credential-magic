@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -33,14 +36,37 @@ var (
 )
 
 func main() {
+	rootCmd := &cobra.Command{
+		Use:   "docker-credential-magic",
+		Short: "Credential helper which proxies auth to other helpers based on domain name",
+	}
+
+	getCmd := &cobra.Command{
+		Use: "get",
+		Short: "For the server specified via stdin, return the stored credentials via stdout",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return get()
+		},
+	}
+
+	rootCmd.AddCommand(getCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			os.Exit(exitError.ExitCode())
+		}
+		log.Fatalln(err.Error())
+	}
+}
+
+func get() error {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	rawInput := scanner.Text()
 
 	domain, err := parseDomain(rawInput)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	helperExe, err := getHelperExecutable(domain)
@@ -48,23 +74,16 @@ func main() {
 		if err == errorHelperNotFound {
 			// Anonymous token
 			fmt.Println(anonymousTokenResponse)
-			os.Exit(0)
+			return nil
 		}
-		fmt.Println(err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	cmd := exec.Command(helperExe, "get")
 	cmd.Stdin = strings.NewReader(rawInput)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitError.ExitCode())
-		}
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
+	return cmd.Run()
 }
 
 func parseDomain(s string) (string, error) {
