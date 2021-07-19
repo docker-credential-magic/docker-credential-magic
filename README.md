@@ -22,8 +22,7 @@ Download [latest release](https://github.com/jdolitsky/docker-credential-magic/r
 for your system and install both tools manually:
 
 ```
-cat docker-credential-magic*.tar.gz | \
-  tar x -C /usr/local/bin 'docker-credential-magic*'
+cat docker-credential-magic*.tar.gz | tar x -C /usr/local/bin 'docker-credential-magic*'
 ```
 
 ## Usage
