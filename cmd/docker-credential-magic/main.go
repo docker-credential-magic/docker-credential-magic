@@ -36,6 +36,11 @@ var (
 )
 
 func main() {
+	// NOTE: this must be done prior to executing rootCmd
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	rawInput := scanner.Text()
+
 	rootCmd := &cobra.Command{
 		Use:   "docker-credential-magic",
 		Short: "Credential helper which proxies auth to other helpers based on domain name",
@@ -45,7 +50,7 @@ func main() {
 		Use: "get",
 		Short: "For the server specified via stdin, return the stored credentials via stdout",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return get()
+			return get(rawInput)
 		},
 	}
 
@@ -59,11 +64,7 @@ func main() {
 	}
 }
 
-func get() error {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	rawInput := scanner.Text()
-
+func get(rawInput string) error {
 	domain, err := parseDomain(rawInput)
 	if err != nil {
 		return err
