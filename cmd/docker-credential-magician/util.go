@@ -18,6 +18,10 @@ import (
 	"github.com/markbates/pkger"
 )
 
+const (
+	pathPrefix = "/opt/magic"
+)
+
 var helpers = []string{
 	"acr-env",
 	"ecr-login",
@@ -94,8 +98,9 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 		}
 
 		creationTime := v1.Time{}
+		name := fmt.Sprintf("%s/bin/docker-credential-%s", strings.TrimPrefix(pathPrefix, "/"), helper)
 		header := &tar.Header{
-			Name:     fmt.Sprintf("usr/local/bin/docker-credential-%s", helper),
+			Name:     name,
 			Size:     info.Size(),
 			Typeflag: tar.TypeReg,
 			// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
@@ -125,5 +130,40 @@ func appendCredentialHelpers(base v1.Image) v1.Image {
 		panic(err)
 	}
 
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		panic(err)
+	}
+
+	cfg = cfg.DeepCopy()
+	updatePath(cfg)
+
+	img, err = mutate.ConfigFile(img, cfg)
+	if err != nil {
+		panic(err)
+	}
+
 	return img
+}
+
+// Adapted from https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
+func updatePath(cf *v1.ConfigFile) {
+	newPath := fmt.Sprintf("%s/bin", pathPrefix)
+
+	for i, env := range cf.Config.Env {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 {
+			// Expect environment variables to be in the form KEY=VALUE, so this is unexpected.
+			continue
+		}
+		key, value := parts[0], parts[1]
+		if key == "PATH" {
+			value = fmt.Sprintf("%s:%s", newPath, value)
+			cf.Config.Env[i] = "PATH=" + value
+			return
+		}
+	}
+
+	// If we get here, we never saw PATH.
+	cf.Config.Env = append(cf.Config.Env, "PATH="+newPath)
 }
