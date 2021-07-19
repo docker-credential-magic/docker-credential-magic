@@ -13,6 +13,8 @@ const (
 	helperACREnv   = "acr-env"
 	helperECRLogin = "ecr-login"
 	helperGCR      = "gcr"
+
+	anonymousTokenResponse = "{\"Username\":\"\",\"Secret\":\"\"}"
 )
 
 var (
@@ -43,6 +45,11 @@ func main() {
 
 	helperExe, err := getHelperExecutable(domain)
 	if err != nil {
+		if err == errorHelperNotFound {
+			// Anonymous token
+			fmt.Println(anonymousTokenResponse)
+			os.Exit(0)
+		}
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
@@ -58,10 +65,6 @@ func main() {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-	// Command exited 0 at this point
-
-	// Anonymous token:
-	//fmt.Println("{\"Username\":\"\",\"Secret\":\"\"}")
 }
 
 func parseDomain(s string) (string, error) {

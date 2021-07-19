@@ -122,3 +122,13 @@ jobs:
                 oci://${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx \
                 --version 9.3.6
           ls -la tmp/ | grep nginx-9.3.6.tgz
+      - name: Integration test (Bundle Bar / Anonymous pull)
+        run: |
+          rm -rf tmp/
+          mkdir tmp/
+          docker run --rm --entrypoint sh \
+              -v ${PWD}/tmp:/tmp \
+              -w /tmp \
+              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+                'oras pull bundle.bar/u/jdolitsky/oras/greetings:v1'
+          ls -la tmp/ | grep greetings.txt
