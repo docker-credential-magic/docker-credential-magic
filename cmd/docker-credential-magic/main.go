@@ -77,7 +77,7 @@ func get(rawInput string) error {
 			// Anonymous token
 			fmt.Println(anonymousTokenResponse)
 			//return nil
-			panic(err)
+			return
 		}
 		//return err
 		panic(err)
