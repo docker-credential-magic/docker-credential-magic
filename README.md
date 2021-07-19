@@ -31,7 +31,7 @@ go install github.com/jdolitsky/docker-credential-magic/cmd/docker-credential-ma
 
 ### `docker-credential-magician`
 
-Note: Requires local Docker daemon to be running
+*Note: Requires local Docker daemon to be running*
 
 ```
 $ docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
