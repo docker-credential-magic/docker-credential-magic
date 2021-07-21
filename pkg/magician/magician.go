@@ -3,17 +3,17 @@ package magician
 import (
 	"archive/tar"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/markbates/pkger"
 )
@@ -32,39 +32,57 @@ var helpers = []string{
 type (
 	MagicOption func(*magicOperation)
 
-	magicOperation struct{}
+	magicOperation struct {
+		tag string
+	}
 )
 
-func Abracadabra(ref string, options ...MagicOption) error {
+func MagicOptWithTag(tag string) MagicOption {
+	return func(operation *magicOperation) {
+		operation.tag = tag
+	}
+}
+
+func Abracadabra(src string, options ...MagicOption) error {
 	operation := &magicOperation{}
 	for _, option := range options {
 		option(operation)
 	}
 
-	newRef := fmt.Sprintf("%s.magic", ref)
-
-	base, err := crane.Pull(ref)
-	if err != nil {
-		return err
+	var tag string
+	if operation.tag != "" {
+		tag = operation.tag
+	} else {
+		tag = src
 	}
 
-	tag, err := name.NewTag(newRef)
+	dst, err := name.ParseReference(tag)
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing reference %q: %v", tag, err)
 	}
+
+	log.Println(fmt.Sprintf("Pulling %s ...", src))
+
+	base, err := crane.Pull(src)
+	if err != nil {
+		return fmt.Errorf("pulling %q: %v", src, err)
+	}
+
+	log.Println("Augmenting image with credential helpers ...")
 
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 
 	for _, helper := range helpers {
-		file, err := pkger.Open(fmt.Sprintf("/credential-helpers/docker-credential-%s", helper))
+		filename := fmt.Sprintf("/credential-helpers/docker-credential-%s", helper)
+		file, err := pkger.Open(filename)
 		if err != nil {
-			return err
+			return fmt.Errorf("opening file %q: %v", filename, err)
 		}
 		defer file.Close()
 		info, err := file.Stat()
 		if err != nil {
-			return err
+			return fmt.Errorf("stat file %q: %v", file, err)
 		}
 
 		creationTime := v1.Time{}
@@ -82,11 +100,11 @@ func Abracadabra(ref string, options ...MagicOption) error {
 		}
 
 		if err := tw.WriteHeader(header); err != nil {
-			return err
+			return fmt.Errorf("writing header %q: %v", header, err)
 		}
 
 		if _, err := io.Copy(tw, file); err != nil {
-			return err
+			return fmt.Errorf("copy to tar %q: %v", file, err)
 		}
 	}
 
@@ -102,25 +120,25 @@ func Abracadabra(ref string, options ...MagicOption) error {
 		ModTime:  creationTime.Time,
 	}
 	if err := tw.WriteHeader(header); err != nil {
-		return err
+		return fmt.Errorf("writing header of json file %q: %v", header, err)
 	}
 	if _, err := io.Copy(tw, strings.NewReader(dockerConfigFileRaw)); err != nil {
-		return err
+		return fmt.Errorf("copy json file to tar: %v", err)
 	}
 
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
-		return err
+		return fmt.Errorf("layer from reader: %v", err)
 	}
 
 	img, err := mutate.AppendLayers(base, newLayer)
 	if err != nil {
-		return err
+		return fmt.Errorf("append layers: %v", err)
 	}
 
 	cfg, err := img.ConfigFile()
 	if err != nil {
-		return err
+		return fmt.Errorf("load image config: %v", err)
 	}
 
 	cfg = cfg.DeepCopy()
@@ -129,23 +147,18 @@ func Abracadabra(ref string, options ...MagicOption) error {
 
 	img, err = mutate.ConfigFile(img, cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("mutate config file: %v", err)
 	}
 
-	if responseRaw, err := daemon.Write(tag, img); err != nil {
-		return err
-	} else {
-		type daemonResponseLine struct {
-			Stream string
-		}
-		for _, line := range strings.Split(responseRaw, "\n") {
-			var lineParsed daemonResponseLine
-			if err := json.Unmarshal([]byte(line), &lineParsed); err == nil {
-				if stream := lineParsed.Stream; stream != "" {
-					log.Println(strings.TrimSuffix(stream, "\n"))
-				}
-			}
-		}
+	log.Println(fmt.Sprintf("Pushing image to %s ...", tag))
+
+	opts := []remote.Option{
+		remote.WithAuthFromKeychain(authn.DefaultKeychain),
+	}
+
+	err = remote.Write(dst, img, opts...)
+	if err != nil {
+		return fmt.Errorf("remote write: %v", err)
 	}
 
 	return nil
@@ -186,4 +199,3 @@ func updateDockerConfig(cf *v1.ConfigFile) {
 	}
 	cf.Config.Env = append(cf.Config.Env, "DOCKER_CONFIG="+pathPrefix)
 }
-
