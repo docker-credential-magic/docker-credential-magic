@@ -23,18 +23,27 @@ jobs:
       - name: Unit tests
         run: |
           make test
+      - name: Integration setup
+        run: |
+          IP=`hostname -I | awk '{print $1}'`
+          export LOCAL_REGISTRY_HOST="${IP}:5000"
+          echo "LOCAL_REGISTRY_HOST=${LOCAL_REGISTRY_HOST}" >> $GITHUB_ENV
+          docker rm -f registry || true
+          docker run --rm -d -p 5000:5000 --name registry registry
       - name: Test binary on existing remote image
         run: |
-          bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0
-          docker run --rm ghcr.io/oras-project/oras:v0.12.0.magic -h
+          bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0 \
+            -t "${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic"
+          docker run --rm ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -h
           docker run --rm --entrypoint docker-credential-acr-env \
-              ghcr.io/oras-project/oras:v0.12.0.magic -h
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -h
           docker run --rm --entrypoint docker-credential-ecr-login \
-              ghcr.io/oras-project/oras:v0.12.0.magic -v
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -v
           docker run --rm --entrypoint docker-credential-gcr \
-              ghcr.io/oras-project/oras:v0.12.0.magic help
-          bin/docker-credential-magician ghcr.io/bloodorangeio/helm:hip-6
-          docker run --rm ghcr.io/bloodorangeio/helm:hip-6.magic -h
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic help
+          bin/docker-credential-magician ghcr.io/bloodorangeio/helm:hip-6 \
+            -t "${LOCAL_REGISTRY_HOST}/bloodorangeio/helm:hip-6.magic"
+          docker run --rm ${LOCAL_REGISTRY_HOST}/bloodorangeio/helm:hip-6.magic -h
       - name: Integration test (Google)
         env:
           GOOGLE_REGISTRY_ENDPOINT: ${{ secrets.GOOGLE_REGISTRY_ENDPOINT }}
@@ -46,7 +55,7 @@ jobs:
               -v ${PWD}/sa.json:/sa.json \
               -e GOOGLE_REGISTRY_ENDPOINT="${GOOGLE_REGISTRY_ENDPOINT}" \
               -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -c \
                 'echo "{}" > config.json && \
                 oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                   ${GOOGLE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
@@ -58,7 +67,7 @@ jobs:
               -v ${PWD}/sa.json:/sa.json \
               -e GOOGLE_REGISTRY_ENDPOINT="${GOOGLE_REGISTRY_ENDPOINT}" \
               -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -c \
                 'oras pull -a \
                   ${GOOGLE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
           ls -la tmp/ | grep nginx-9.3.6.tgz
@@ -75,7 +84,7 @@ jobs:
               -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
               -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
               -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -c \
                 'echo "{}" > config.json && \
                 oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
                   ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6 \
@@ -88,7 +97,7 @@ jobs:
               -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
               -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
               -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -c \
                 'oras pull -a \
                   ${AWS_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx:9.3.6'
           ls -la tmp/ | grep nginx-9.3.6.tgz
@@ -108,7 +117,7 @@ jobs:
               -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
               -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
               -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-              ghcr.io/bloodorangeio/helm:hip-6.magic \
+              ${LOCAL_REGISTRY_HOST}/bloodorangeio/helm:hip-6.magic \
                 push --debug /nginx-9.3.6.tgz \
                 oci://${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo
           rm -rf tmp/
@@ -121,7 +130,7 @@ jobs:
               -e AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
               -e AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}" \
               -e AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-              ghcr.io/bloodorangeio/helm:hip-6.magic \
+              ${LOCAL_REGISTRY_HOST}/bloodorangeio/helm:hip-6.magic \
                 pull --debug \
                 oci://${AZURE_REGISTRY_ENDPOINT}/docker-credential-magic/demo/nginx \
                 --version 9.3.6
@@ -133,9 +142,13 @@ jobs:
           docker run --rm --entrypoint sh \
               -v ${PWD}/tmp:/tmp \
               -w /tmp \
-              ghcr.io/oras-project/oras:v0.12.0.magic -c \
+              ${LOCAL_REGISTRY_HOST}/oras-project/oras:v0.12.0.magic -c \
                 'oras pull bundle.bar/u/jdolitsky/oras/greetings:v1'
           ls -la tmp/ | grep greetings.txt
+      - name: Integration teardown
+        if: always()
+        run: |
+          docker rm -f registry || true
       - name: Upload coverage report
         uses: actions/upload-artifact@v2
         if: always()
