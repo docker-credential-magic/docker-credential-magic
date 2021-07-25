@@ -19,6 +19,10 @@ jobs:
           make build-helper
           make pkger-gen
           make build
+      # Note: unit tests *after* build steps since magician relies on helpers etc.
+      - name: Unit tests
+        run: |
+          make test
       - name: Test binary on existing remote image
         run: |
           bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0
@@ -132,3 +136,9 @@ jobs:
               ghcr.io/oras-project/oras:v0.12.0.magic -c \
                 'oras pull bundle.bar/u/jdolitsky/oras/greetings:v1'
           ls -la tmp/ | grep greetings.txt
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: magic-coverage-report-${{ github.sha }}
+          path: .cover/coverage.html

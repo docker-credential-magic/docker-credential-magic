@@ -26,3 +26,4 @@ tmp/
 .config/
 .docker/
 *.tar.gz
+.cover/

@@ -28,6 +28,10 @@ build:
 run:
 	go run .../cmd/docker-credential-magician $(REF)
 
+.PHONY: test
+test: vendor
+	scripts/test.sh
+
 .PHONY: clean
 clean:
 	rm -rf bin/ tmp/ vendor/ credential-helpers/ \
