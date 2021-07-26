@@ -55,9 +55,9 @@ $ echo "us.gcr.io" | docker-credential-magic get
 ### `docker-credential-magician`
 
 The following example shows how `docker-credential-magician` can be used to
-augment the [`cosign`](https://github.com/sigstore/cosign) image with
-various credential helpers, set the default credential store to `magic`,
-and push the new image to a registry running at `localhost:5000`:
+(1) augment the [`cosign`](https://github.com/sigstore/cosign) image with
+various credential helpers, (2) set the default credential store to `magic`,
+and (3) push the new image to a registry running at `localhost:5000`:
 
 ```
 $ docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0 \
