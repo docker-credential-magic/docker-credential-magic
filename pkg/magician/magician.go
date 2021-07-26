@@ -114,7 +114,7 @@ func Abracadabra(src string, options ...MagicOption) error {
 	}
 
 	// Create our custom Docker config file, with magic catch-all
-	dockerConfigFileRaw := "{\"credsStore\":\"magic\"}"
+	dockerConfigFileRaw := "{\"credsStore\":\"magic\"}\n"
 	creationTime := v1.Time{}
 	name := fmt.Sprintf("%s/config.json", strings.TrimPrefix(pathPrefix, "/"))
 	header := &tar.Header{
