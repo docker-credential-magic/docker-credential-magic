@@ -4,6 +4,14 @@
 
 ![docker-credential-magic](./docker-credential-magic.png)
 
+- [Overview](#overview)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [`docker-credential-magic`](#docker-credential-magic)
+  - [`docker-credential-magician`](#docker-credential-magician)
+
+## Overview
+
 This repo contains the source for two separate tools:
 
 - `docker-credential-magic` - credential helper which proxies auth to other helpers based on domain name
