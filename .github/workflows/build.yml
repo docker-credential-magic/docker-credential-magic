@@ -25,6 +25,7 @@ jobs:
           make test
       - name: Acceptance tests
         run: |
+          pip install --upgrade virtualenv
           make acceptance
         env:
           AZURE_REGISTRY_ENDPOINT: ${{ secrets.AZURE_REGISTRY_ENDPOINT }}
