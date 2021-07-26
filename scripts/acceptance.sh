@@ -54,7 +54,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="${GOOGLE_APPLICATION_CREDENTIALS}"
 set -x
 
 if [ ! -d .venv/ ]; then
-  virtualenv -p $(which python3) .venv/
+  python3 -m virtualenv --clear .venv/
   .venv/bin/python .venv/bin/pip install $PY_REQUIRES
 fi
 
