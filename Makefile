@@ -32,6 +32,10 @@ run:
 test: vendor
 	scripts/test.sh
 
+.PHONY: acceptance
+acceptance:
+	scripts/acceptance.sh
+
 .PHONY: clean
 clean:
 	rm -rf bin/ tmp/ vendor/ credential-helpers/ \

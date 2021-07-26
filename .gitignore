@@ -27,3 +27,7 @@ tmp/
 .docker/
 *.tar.gz
 .cover/
+.venv/
+.robot/
+acceptance/lib/__pycache__/
+test.env
