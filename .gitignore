@@ -18,8 +18,7 @@ vendor/
 .idea/
 .vscode/
 bin/
-credential-helpers/
-pkg/magician/pkged.go
+pkg/magician/credential-helpers/
 sa.json
 tmp/
 .cache/

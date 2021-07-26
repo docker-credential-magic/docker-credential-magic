@@ -12,12 +12,8 @@ vendor:
 build-helper: vendor
 build-helper:
 	GOOS=linux GOARCH=amd64 \
-		go build -o credential-helpers/docker-credential-magic \
+		go build -o pkg/magician/credential-helpers/docker-credential-magic \
 			.../cmd/docker-credential-magic
-
-.PHONY: pkger-gen
-pkger-gen:
-	go run cmd/pkger-gen/main.go
 
 .PHONY: build
 build: vendor
@@ -38,5 +34,4 @@ acceptance:
 
 .PHONY: clean
 clean:
-	rm -rf bin/ tmp/ vendor/ credential-helpers/ \
-		cmd/docker-credential-magician/pkged.go
+	rm -rf .venv/ .cover/ .robot/ bin/ tmp/ vendor/ pkg/magician/credential-helpers/

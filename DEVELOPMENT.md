@@ -1,6 +1,6 @@
 ## Development
 
-### Generating `pkged.go`
+### Generating embedded content
 
 First, fetch all credential helper binaries into `credential-helpers/`:
 
@@ -14,14 +14,7 @@ Next, build our custom `magic` helper:
 make build-helper
 ```
 
-Finally, run our custom [pkger](https://github.com/markbates/pkger) script:
-
-```
-make pkger-gen
-```
-
-This will create the file `pkged.go` in `cmd/docker-credential-magician/`, which
-allows us to build a single binary with all supported credential helpers baked in.
+The `magician` binary is built with all supported credential helpers baked in.
 
 The downside is that our binary is larger that normal (~30mb), but the upside
 is that users will not need to make any network requests (to fetch credential helpers)
@@ -29,7 +22,7 @@ in order to use this tool.
 
 ### Building binary
 
-After running the steps above related to `pkged.go`,
+After running the steps above related to embedded content,
 run the following:
 
 ```

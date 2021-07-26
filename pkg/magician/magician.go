@@ -3,6 +3,7 @@ package magician
 import (
 	"archive/tar"
 	"bytes"
+	"embed"
 	"fmt"
 	"io"
 	"log"
@@ -15,19 +16,23 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/markbates/pkger"
 )
 
 const (
 	pathPrefix = "/opt/magic"
 )
 
-var helpers = []string{
-	"acr-env",
-	"ecr-login",
-	"gcr",
-	"magic", // our custom helper
-}
+var (
+	helpers = []string{
+		"acr-env",
+		"ecr-login",
+		"gcr",
+		"magic", // our custom helper
+	}
+
+	//go:embed credential-helpers/*
+	embedded embed.FS
+)
 
 type (
 	MagicOption func(*magicOperation)
@@ -74,8 +79,8 @@ func Abracadabra(src string, options ...MagicOption) error {
 	tw := tar.NewWriter(&b)
 
 	for _, helper := range helpers {
-		filename := fmt.Sprintf("/credential-helpers/docker-credential-%s", helper)
-		file, err := pkger.Open(filename)
+		filename := fmt.Sprintf("credential-helpers/docker-credential-%s", helper)
+		file, err := embedded.Open(filename)
 		if err != nil {
 			return fmt.Errorf("opening file %q: %v", filename, err)
 		}

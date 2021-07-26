@@ -8,8 +8,8 @@ ECR_HELPER_BINARY_SHA256="a0ae9a66b1f41f3312785ec5e17404c7fd2a16a35703c9ea7c0504
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR/../../
 
-mkdir -p credential-helpers/
-cd credential-helpers/
+mkdir -p pkg/magician/credential-helpers/
+cd pkg/magician/credential-helpers/
 
 if [[ ! -f docker-credential-ecr-login ]]; then
   curl -L -o docker-credential-ecr-login \

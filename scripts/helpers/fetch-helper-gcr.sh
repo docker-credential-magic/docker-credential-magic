@@ -9,8 +9,8 @@ GCR_HELPER_BINARY_SHA256="716dd54138618abefe02e40197240864500f204ca58668295c49d8
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR/../../
 
-mkdir -p credential-helpers/
-cd credential-helpers/
+mkdir -p pkg/magician/credential-helpers/
+cd pkg/magician/credential-helpers/
 
 if [[ ! -f docker-credential-gcr ]]; then
   if [[ ! -f docker-credential-gcr.tar.gz ]]; then

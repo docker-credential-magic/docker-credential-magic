@@ -17,7 +17,6 @@ jobs:
         run: |
           make fetch-helpers
           make build-helper
-          make pkger-gen
           make build
       # Note: unit tests *after* build steps since magician relies on helpers etc.
       - name: Unit tests
