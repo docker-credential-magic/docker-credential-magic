@@ -48,23 +48,26 @@ $ echo "us.gcr.io" | docker-credential-magic get
 
 The following example shows how `docker-credential-magician` can be used to
 augment the [`cosign`](https://github.com/sigstore/cosign) image with
-various credential helpers, and set the default credential store to `magic`:
-
-*Note: Requires local Docker daemon to be running*
+various credential helpers, set the default credential store to `magic`,
+and push the new image to a registry running at `localhost:5000`:
 
 ```
-$ docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
-2021/07/19 15:49:11 Loaded image: gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic
+$ docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0 \
+    -t localhost:5000/cosign:v0.5.0-magic
+2021/07/26 17:42:31 Pulling gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0 ...
+2021/07/26 17:42:38 Augmenting image with credential helpers ...
+2021/07/26 17:42:39 Pushing image to localhost:5000/cosign:v0.5.0-magic ...
 ```
 
 ```
 $ docker run --rm --entrypoint sh \
-    gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic \
+    localhost:5000/cosign:v0.5.0-magic \
     -c 'ls -lah /opt/magic/bin &&
         env | grep DOCKER_CONFIG &&
         cat $DOCKER_CONFIG/config.json'
-drwxr-xr-x    2 root     root        4.0K Jul 19 19:49 .
-drwxr-xr-x    3 root     root        4.0K Jul 19 19:49 ..
+total 24M
+drwxr-xr-x    2 root     root        4.0K Jul 26 22:43 .
+drwxr-xr-x    3 root     root        4.0K Jul 26 22:43 ..
 -r-xr-xr-x    1 root     root        8.7M Jan  1  1970 docker-credential-acr-env
 -r-xr-xr-x    1 root     root        7.8M Jan  1  1970 docker-credential-ecr-login
 -r-xr-xr-x    1 root     root        5.6M Jan  1  1970 docker-credential-gcr
