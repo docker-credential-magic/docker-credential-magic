@@ -1,4 +1,4 @@
-module github.com/jdolitsky/docker-credential-magic
+module github.com/docker-credential-magic/docker-credential-magic
 
 go 1.16
 

@@ -1,6 +1,6 @@
 # docker-credential-magic
 
-[![GitHub Actions status](https://github.com/jdolitsky/docker-credential-magic/workflows/build/badge.svg)](https://github.com/jdolitsky/docker-credential-magic/actions?query=workflow%3Abuild+)
+[![GitHub Actions status](https://github.com/docker-credential-magic/docker-credential-magic/workflows/build/badge.svg)](https://github.com/docker-credential-magic/docker-credential-magic/actions?query=workflow%3Abuild+)
 
 ![docker-credential-magic](./docker-credential-magic.png)
 
@@ -26,7 +26,7 @@ The following third-party Docker credential helpers are currently supported:
 
 ## Installation
 
-Download [latest release](https://github.com/jdolitsky/docker-credential-magic/releases/latest) tarball
+Download [latest release](https://github.com/docker-credential-magic/docker-credential-magic/releases/latest) tarball
 for your system and install both tools manually:
 
 ```

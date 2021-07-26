@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jdolitsky/docker-credential-magic/pkg/magician"
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/magician"
 )
 
 type settings struct {
