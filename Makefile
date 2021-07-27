@@ -4,6 +4,10 @@ fetch-helpers:
 	scripts/helpers/fetch-helper-ecr-login.sh
 	scripts/helpers/fetch-helper-gcr.sh
 
+.PHONY: copy-mappings
+copy-mappings:
+	cp default-mappings.yml pkg/magician/default-mappings.yml
+
 .PHONY: vendor
 vendor:
 	go mod vendor

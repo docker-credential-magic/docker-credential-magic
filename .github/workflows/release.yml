@@ -15,7 +15,7 @@ jobs:
         with:
           go-version: 1.16.x
       - name: prepare build environment
-        run: make fetch-helpers build-magic-embedded
+        run: make fetch-helpers build-magic-embedded copy-mappings
       - uses: goreleaser/goreleaser-action@v2
         with:
           version: latest

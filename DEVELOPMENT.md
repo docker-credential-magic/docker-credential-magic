@@ -22,6 +22,12 @@ Next, build our custom `magic` helper into `pkg/magician/credential-helpers/`:
 make build-magic-embedded
 ```
 
+Finally, copy over the default mappings file into  `pkg/magician/`:
+
+```
+make copy-mappings
+```
+
 Note: All embedded helpers are for Linux amd64 architecture.
 
 ### Building magician binary

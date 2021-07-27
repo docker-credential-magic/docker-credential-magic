@@ -16,6 +16,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -23,15 +24,11 @@ const (
 )
 
 var (
-	helpers = []string{
-		"acr-env",
-		"ecr-login",
-		"gcr",
-		"magic", // our custom helper
-	}
-
 	//go:embed credential-helpers/*
 	embedded embed.FS
+
+	//go:embed default-mappings.yml
+	defaultMappings embed.FS
 )
 
 type (
@@ -40,6 +37,13 @@ type (
 	magicOperation struct {
 		tag string
 	}
+
+	helperMapping struct {
+		Binary  string
+		Domains []string
+	}
+
+	helperMappings map[string]helperMapping
 )
 
 func MagicOptWithTag(tag string) MagicOption {
@@ -52,6 +56,27 @@ func Abracadabra(src string, options ...MagicOption) error {
 	operation := &magicOperation{}
 	for _, option := range options {
 		option(operation)
+	}
+
+	defaultMappingsFile, err := defaultMappings.Open("default-mappings.yml")
+	if err != nil {
+		return fmt.Errorf("open default mappings: %v", err)
+	}
+	defer defaultMappingsFile.Close()
+	buf := bytes.NewBuffer(nil)
+	_, err = io.Copy(buf, defaultMappingsFile)
+	if err != nil {
+		return fmt.Errorf("copy default mappings to buffer: %v", err)
+	}
+	mappingsFileRaw := buf.String()
+	var mappings helperMappings
+	err = yaml.Unmarshal(buf.Bytes(), &mappings)
+	if err != nil {
+		return fmt.Errorf("parsing default mappings yaml: %v", err)
+	}
+	mappings["magic"] = helperMapping{
+		Binary:  "magic",
+		Domains: []string{},
 	}
 
 	var tag string
@@ -78,8 +103,8 @@ func Abracadabra(src string, options ...MagicOption) error {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 
-	for _, helper := range helpers {
-		filename := fmt.Sprintf("credential-helpers/docker-credential-%s", helper)
+	for _, mapping := range mappings {
+		filename := fmt.Sprintf("credential-helpers/docker-credential-%s", mapping.Binary)
 		file, err := embedded.Open(filename)
 		if err != nil {
 			return fmt.Errorf("opening file %q: %v", filename, err)
@@ -91,7 +116,9 @@ func Abracadabra(src string, options ...MagicOption) error {
 		}
 
 		creationTime := v1.Time{}
-		name := fmt.Sprintf("%s/bin/docker-credential-%s", strings.TrimPrefix(pathPrefix, "/"), helper)
+		name := fmt.Sprintf("%s/bin/docker-credential-%s",
+			strings.TrimPrefix(pathPrefix, "/"),
+			mapping.Binary)
 		header := &tar.Header{
 			Name:     name,
 			Size:     info.Size(),
@@ -129,6 +156,23 @@ func Abracadabra(src string, options ...MagicOption) error {
 	}
 	if _, err := io.Copy(tw, strings.NewReader(dockerConfigFileRaw)); err != nil {
 		return fmt.Errorf("copy json file to tar: %v", err)
+	}
+
+	// Create the mappings file
+	creationTime = v1.Time{}
+	name = fmt.Sprintf("%s/mappings.yml", strings.TrimPrefix(pathPrefix, "/"))
+	header = &tar.Header{
+		Name:     name,
+		Size:     int64(len(mappingsFileRaw)),
+		Typeflag: tar.TypeReg,
+		Mode:     0555,
+		ModTime:  creationTime.Time,
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		return fmt.Errorf("writing header of mappings file %q: %v", header, err)
+	}
+	if _, err := io.Copy(tw, strings.NewReader(mappingsFileRaw)); err != nil {
+		return fmt.Errorf("copy mappings file to tar: %v", err)
 	}
 
 	newLayer, err := tarball.LayerFromReader(&b)
