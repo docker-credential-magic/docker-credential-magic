@@ -8,24 +8,23 @@ fetch-helpers:
 vendor:
 	go mod vendor
 
-.PHONY: build-helper
-build-helper: vendor
-build-helper:
+.PHONY: build-magic
+build-magic:
+	go build -o bin/docker-credential-magic \
+		.../cmd/docker-credential-magic
+
+.PHONY: build-magic-embedded
+build-magic-embedded:
 	GOOS=linux GOARCH=amd64 \
 		go build -o pkg/magician/credential-helpers/docker-credential-magic \
 			.../cmd/docker-credential-magic
 
-.PHONY: build
-build: vendor
-build:
+.PHONY: build-magician
+build-magician:
 	go build -o bin/docker-credential-magician .../cmd/docker-credential-magician
 
-.PHONY: run
-run:
-	go run .../cmd/docker-credential-magician $(REF)
-
 .PHONY: test
-test: vendor
+test:
 	scripts/test.sh
 
 .PHONY: acceptance

@@ -1,18 +1,30 @@
 ## Development
 
+### Download Go dependencies
+
+Run the following:
+
+```
+make vendor
+```
+
 ### Generating embedded content
 
-First, fetch all credential helper binaries into `credential-helpers/`:
+First, fetch all credential helper binaries into `pkg/magician/credential-helpers/`:
 
 ```
 make fetch-helpers
 ```
 
-Next, build our custom `magic` helper:
+Next, build our custom `magic` helper into `pkg/magician/credential-helpers/`:
 
 ```
-make build-helper
+make build-magic-embedded
 ```
+
+Note: All embedded helpers are for Linux amd64 architecture.
+
+### Building magician binary
 
 The `magician` binary is built with all supported credential helpers baked in.
 
@@ -20,185 +32,73 @@ The downside is that our binary is larger that normal (~30mb), but the upside
 is that users will not need to make any network requests (to fetch credential helpers)
 in order to use this tool.
 
-### Building binary
-
 After running the steps above related to embedded content,
 run the following:
 
 ```
-make build
+make build-magician
 ```
 
-### Run binary
+This will build a binary for you system architecture at `bin/docker-credential-magician`.
+
+### Building a locally-usable magic binary
+
+You may wish to have a `magic` binary to use locally.
+
+To do so, run the following:
 
 ```
-bin/docker-credential-magician <ref>
+make build-magic
 ```
 
-Which will produce a new image in your local Docker engine named the following:
+This will build a binary for you system architecture at `bin/docker-credential-magic`.
+
+### Run unit tests
+
+Run the following:
 
 ```
-<ref>.magic
+make test
 ```
 
-#### Examples
+This will produce an HTML coverage report at `.cover/coverage.html`.
 
-##### helm
+### Run acceptance tests
 
-The following is an example of augmenting the image for [helm](https://github.com/helm/helm):
+First, make sure the Docker daemon is running locally, and `virtualenv` is installed.
 
-```
-$ bin/docker-credential-magician <image>
-Loaded image: ghcr.io/bloodorangeio/helm:hip-6.magic
-```
+Next, set env vars related to the registry providers you wish to test:
 
 ```
-$ docker run --rm \
-    ghcr.io/bloodorangeio/helm:hip-6.magic -h
-The Kubernetes package manager
-...
+export AZURE_REGISTRY_ENDPOINT="..."
+export AZURE_REGISTRY_NAMESPACE="..."
+export AZURE_CLIENT_ID="..."
+export AZURE_CLIENT_SECRET="..."
+export AZURE_TENANT_ID="..."
+export AWS_REGISTRY_ENDPOINT="..."
+export AWS_REGISTRY_NAMESPACE="..."
+export AWS_DEFAULT_REGION="..."
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export GOOGLE_REGISTRY_ENDPOINT="..."
+export GOOGLE_REGISTRY_NAMESPACE="..."
+export GOOGLE_APPLICATION_CREDENTIALS_BASE64="..."
 ```
 
-```
-$ docker run --rm --entrypoint docker-credential-gcr \
-    ghcr.io/bloodorangeio/helm:hip-6.magic help
-Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
-...
-```
+If vars are missing for a registry provider, then related tests will be skipped.
 
-##### cosign
-
-The following is an example of augmenting the image for [cosign](https://github.com/sigstore/cosign):
+Finally, run the following:
 
 ```
-$ bin/docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0
-Loaded image: gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic
+make acceptance
 ```
 
-```
-$ docker run --rm \
-    gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic -h
-USAGE
-  cosign [flags] <subcommand>
+This will produce an HTML test report at `.robot/report.html`.
 
-SUBCOMMANDS
-  verify             Verify a signature on the supplied container image
-  sign               Sign the supplied container image.
-  upload             upload signatures to the supplied container image
-  generate           generate (usigned) signature payloads from the supplied container image
-  download           Download signatures from the supplied container image
-  generate-key-pair  generate-key-pair generates a key-pair
-  sign-blob          Sign the supplied blob, outputting the base64-encoded signature to stdout.
-  upload-blob        Upload one or more blobs to the supplied container image address
-  copy               Copy the supplied container image and signatures.
-  clean              Remove all signatures from an image
-  verify-blob        Verify a signature on the supplied blob
-  triangulate        Outputs the located cosign image reference. This is the location cosign stores signatures.
-  version            Prints the cosign version
-  public-key         public-key gets a public key from the key-pair
+### Clean workspace
 
-
-FLAGS
-  -d false          log debug output
-  -output-file ...  log output to a file
-```
+To remove all generated content etc., run the following:
 
 ```
-$ docker run --rm --entrypoint docker-credential-gcr \
-    gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0.magic help
-Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
-
-Subcommands:
-	clear            remove all stored credentials
-	commands         list all command names
-	help             describe subcommands and their syntax
-	version          print the version of the binary to stdout
-
-Subcommands for Config:
-	config           configure the credential helper
-	configure-docker  configures the Docker client to use docker-credential-gcr
-
-Subcommands for Docker credential store API:
-	erase            (UNIMPLEMENTED) erase any stored credentials for the server specified via stdin
-	get              for the server specified via stdin, return the stored credentials via stdout
-	list             (UNIMPLEMENTED) list all stored credentials
-	store            (UNIMPLEMENTED) for the specified server, store the credentials provided via stdin
-
-Subcommands for GCR authentication:
-	gcr-login        log in to GCR
-	gcr-logout       log out from GCR
-
-```
-
-##### oras
-
-The following is an example of augmenting the image for [oras](https://github.com/oras-project/oras):
-
-```
-$ bin/docker-credential-magician ghcr.io/oras-project/oras:v0.12.0
-Loaded image: ghcr.io/oras-project/oras:v0.12.0.magic
-```
-
-```
-$ docker run --rm \
-    ghcr.io/oras-project/oras:v0.12.0.magic -h
-Usage:
-  oras [command]
-
-Available Commands:
-  help        Help about any command
-  login       Log in to a remote registry
-  logout      Log out from a remote registry
-  pull        Pull files from remote registry
-  push        Push files to remote registry
-  version     Show the oras version information
-
-Flags:
-  -h, --help   help for oras
-
-Use "oras [command] --help" for more information about a command.
-```
-
-```
-$ docker run --rm --entrypoint docker-credential-gcr \
-    ghcr.io/oras-project/oras:v0.12.0.magic help
-Usage: docker-credential-gcr <flags> <subcommand> <subcommand args>
-
-Subcommands:
-	clear            remove all stored credentials
-	commands         list all command names
-	help             describe subcommands and their syntax
-	version          print the version of the binary to stdout
-
-Subcommands for Config:
-	config           configure the credential helper
-	configure-docker  configures the Docker client to use docker-credential-gcr
-
-Subcommands for Docker credential store API:
-	erase            (UNIMPLEMENTED) erase any stored credentials for the server specified via stdin
-	get              for the server specified via stdin, return the stored credentials via stdout
-	list             (UNIMPLEMENTED) list all stored credentials
-	store            (UNIMPLEMENTED) for the specified server, store the credentials provided via stdin
-
-Subcommands for GCR authentication:
-	gcr-login        log in to GCR
-	gcr-logout       log out from GCR
-
-```
-
-```
-$ docker run -it --rm --entrypoint sh \
-    -v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz \
-    -v ${PWD}/sa.json:/sa.json \
-    -e GOOGLE_APPLICATION_CREDENTIALS=/sa.json \
-    ghcr.io/oras-project/oras:v0.12.0.magic
-/workspace # mkdir ~/.docker
-/workspace # echo '{"credHelpers": {"us-central1-docker.pkg.dev": "gcr"}}' > ~/.docker/config.json
-/workspace # echo '{}' > config.json
-/workspace # oras push --manifest-config config.json:application/vnd.cncf.helm.config.v1+json \
-                us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6 \
-                nginx-9.3.6.tgz:application/tar+gzip
-Uploading e58cb1bb3a26 nginx-9.3.6.tgz
-Pushed us-central1-docker.pkg.dev/docker-credential-magic/demo/nginx:9.3.6
-Digest: sha256:51c004e6c7abfe03259aa900a8a62d12c183f3103dd3d6ca3ed1e15360fcda6c
+make clean
 ```

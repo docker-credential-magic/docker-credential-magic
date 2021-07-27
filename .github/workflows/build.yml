@@ -15,9 +15,11 @@ jobs:
           go-version: '1.16'
       - name: Build binary
         run: |
+          make clean
+          make vendor
           make fetch-helpers
-          make build-helper
-          make build
+          make build-magic-embedded
+          make build-magician
       # Note: unit tests *after* build steps since magician relies on helpers etc.
       - name: Unit tests
         run: |
