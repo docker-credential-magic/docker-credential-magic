@@ -1,3 +1,12 @@
+SHELL   = /usr/bin/env bash
+GIT_SHA = $(shell git rev-parse --short HEAD)
+GIT_TAG = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
+
+VERSION = ${GIT_TAG}
+ifeq ($(VERSION),)
+	VERSION = ${GIT_SHA}-devel
+endif
+
 .PHONY: fetch-helpers
 fetch-helpers:
 	for i in $(shell find mappings -name '*.yml' -exec basename {} .yml \;); do \
@@ -14,18 +23,22 @@ vendor:
 
 .PHONY: build-magic
 build-magic:
-	go build -o bin/docker-credential-magic \
+	go build -ldflags="-X main.Version=$(VERSION)" \
+		-o bin/docker-credential-magic \
 		.../cmd/docker-credential-magic
 
 .PHONY: build-magic-embedded
 build-magic-embedded:
 	GOOS=linux GOARCH=amd64 \
-		go build -o pkg/magician/credential-helpers/docker-credential-magic \
+		go build -ldflags="-X main.Version=$(VERSION)" \
+			-o pkg/magician/credential-helpers/docker-credential-magic \
 			.../cmd/docker-credential-magic
 
 .PHONY: build-magician
 build-magician:
-	go build -o bin/docker-credential-magician .../cmd/docker-credential-magician
+	go build -ldflags="-X main.Version=$(VERSION)" \
+		-o bin/docker-credential-magician \
+		.../cmd/docker-credential-magician
 
 .PHONY: test
 test:

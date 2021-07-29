@@ -1,17 +1,23 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
+	"fmt"
 	"log"
 	"os"
+
+	"github.com/spf13/cobra"
 
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/magician"
 )
 
 type mutateSettings struct {
-	Tag string
+	Tag            string
 	IncludeHelpers []string
 }
+
+// Version can be set via:
+// -ldflags="-X main.Version=$TAG"
+var Version string
 
 func main() {
 	var mutate mutateSettings
@@ -21,8 +27,22 @@ func main() {
 		Short: "Augment images with various credential helpers (including magic)",
 	}
 
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print the version and exit",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if Version == "" {
+				fmt.Println("could not determine build information")
+			} else {
+				fmt.Println(Version)
+			}
+			return nil
+		},
+	}
+	rootCmd.AddCommand(versionCmd)
+
 	mutateCmd := &cobra.Command{
-		Use: "mutate",
+		Use:   "mutate",
 		Short: "Augment an image with one or more credential helpers",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

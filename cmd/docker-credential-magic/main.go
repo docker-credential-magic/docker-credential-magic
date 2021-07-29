@@ -21,6 +21,10 @@ const (
 )
 
 var (
+	// Version can be set via:
+	// -ldflags="-X main.Version=$TAG"
+	Version string
+
 	errorInvalidDomain = errors.New("supplied domain is invalid")
 
 	// TODO: should use existing cred helper/docker config if no match
@@ -31,6 +35,19 @@ var (
 )
 
 func main() {
+	args := os.Args
+	if len(args) < 2 {
+		usage()
+	}
+	subcommand := args[1]
+	if subcommand != "get" && subcommand != "version" {
+		usage()
+	}
+	if subcommand == "version" {
+		version()
+	}
+
+	// Assume subcommand is "get" here and read from stdin
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	rawInput := scanner.Text()
@@ -59,6 +76,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func usage() {
+	fmt.Println("Usage: docker-credential-magic <get|version>")
+	os.Exit(1)
+}
+
+func version() {
+	fmt.Println(Version)
+	os.Exit(0)
 }
 
 func parseDomain(s string) (string, error) {
