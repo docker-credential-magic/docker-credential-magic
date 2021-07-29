@@ -1,0 +1,4 @@
+helper: gcr
+domains:
+  - gcr.io
+  - pkg.dev

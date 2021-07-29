@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"path"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -24,11 +25,8 @@ const (
 )
 
 var (
-	//go:embed credential-helpers/*
+	//go:embed credential-helpers/* default-mappings/*
 	embedded embed.FS
-
-	//go:embed default-mappings.yml
-	defaultMappings embed.FS
 )
 
 type (
@@ -36,14 +34,13 @@ type (
 
 	magicOperation struct {
 		tag string
+		helpers []string
 	}
 
 	helperMapping struct {
-		Binary  string
+		Helper  string
 		Domains []string
 	}
-
-	helperMappings map[string]helperMapping
 )
 
 func MagicOptWithTag(tag string) MagicOption {
@@ -58,27 +55,6 @@ func Abracadabra(src string, options ...MagicOption) error {
 		option(operation)
 	}
 
-	defaultMappingsFile, err := defaultMappings.Open("default-mappings.yml")
-	if err != nil {
-		return fmt.Errorf("open default mappings: %v", err)
-	}
-	defer defaultMappingsFile.Close()
-	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, defaultMappingsFile)
-	if err != nil {
-		return fmt.Errorf("copy default mappings to buffer: %v", err)
-	}
-	mappingsFileRaw := buf.String()
-	var mappings helperMappings
-	err = yaml.Unmarshal(buf.Bytes(), &mappings)
-	if err != nil {
-		return fmt.Errorf("parsing default mappings yaml: %v", err)
-	}
-	mappings["magic"] = helperMapping{
-		Binary:  "magic",
-		Domains: []string{},
-	}
-
 	var tag string
 	if operation.tag != "" {
 		tag = operation.tag
@@ -86,57 +62,63 @@ func Abracadabra(src string, options ...MagicOption) error {
 		tag = src
 	}
 
+	// Validate the tag
 	dst, err := name.ParseReference(tag)
 	if err != nil {
 		return fmt.Errorf("parsing reference %q: %v", tag, err)
 	}
 
-	log.Println(fmt.Sprintf("Pulling %s ...", src))
+	// Validate the requested helpers to include
+	supportedHelpers, err := getSupportedHelpers()
+	if err != nil {
+		return fmt.Errorf("get supported helpers: %v", err)
+	}
+	var requestedHelpers []string
+	if len(operation.helpers) > 0 {
+		// Make sure that the requested helpers are valid/supported
+		for _, slug := range operation.helpers {
+			slugLower := strings.ToLower(slug)
+			var isValid bool
+			for _, h := range supportedHelpers {
+				if slugLower == h {
+					isValid = true
+					break
+				}
+			}
+			if !isValid {
+				return fmt.Errorf("unspported helper: %s", slug)
+			}
+			requestedHelpers = append(requestedHelpers, slugLower)
+		}
+	} else {
+		// If no helpers requested, then default to all
+		requestedHelpers = supportedHelpers
+	}
 
+	// Attempt to pull the image
+	log.Println(fmt.Sprintf("Pulling %s ...", src))
 	base, err := crane.Pull(src)
 	if err != nil {
 		return fmt.Errorf("pulling %q: %v", src, err)
 	}
 
-	log.Println("Augmenting image with credential helpers ...")
-
+	// Build the tarball containing our new files
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
-
-	for _, mapping := range mappings {
-		filename := fmt.Sprintf("credential-helpers/docker-credential-%s", mapping.Binary)
-		file, err := embedded.Open(filename)
+	var helperNames []string
+	for _, slug := range requestedHelpers {
+		mappingsFilename := fmt.Sprintf("default-mappings/%s.yml", slug)
+		helperName, err := writeEmbeddedFileToTarAtPrefix(*tw, mappingsFilename, "mappings")
 		if err != nil {
-			return fmt.Errorf("opening file %q: %v", filename, err)
+			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
 		}
-		defer file.Close()
-		info, err := file.Stat()
+		helperNames = append(helperNames, helperName)
+	}
+	for _, helperName := range helperNames {
+		helperFilename := fmt.Sprintf("credential-helpers/docker-credential-%s", helperName)
+		_, err = writeEmbeddedFileToTarAtPrefix(*tw, helperFilename, "bin")
 		if err != nil {
-			return fmt.Errorf("stat file %q: %v", file, err)
-		}
-
-		creationTime := v1.Time{}
-		name := fmt.Sprintf("%s/bin/docker-credential-%s",
-			strings.TrimPrefix(pathPrefix, "/"),
-			mapping.Binary)
-		header := &tar.Header{
-			Name:     name,
-			Size:     info.Size(),
-			Typeflag: tar.TypeReg,
-			// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
-			// Use a fixed Mode, so that this isn't sensitive to the directory and umask
-			// under which it was created. Additionally, windows can only set 0222,
-			// 0444, or 0666, none of which are executable.
-			Mode:    0555,
-			ModTime: creationTime.Time,
-		}
-
-		if err := tw.WriteHeader(header); err != nil {
-			return fmt.Errorf("writing header %q: %v", header, err)
-		}
-
-		if _, err := io.Copy(tw, file); err != nil {
-			return fmt.Errorf("copy to tar %q: %v", file, err)
+			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
 		}
 	}
 
@@ -144,6 +126,7 @@ func Abracadabra(src string, options ...MagicOption) error {
 	dockerConfigFileRaw := "{\"credsStore\":\"magic\"}\n"
 	creationTime := v1.Time{}
 	name := fmt.Sprintf("%s/config.json", strings.TrimPrefix(pathPrefix, "/"))
+	log.Printf("Adding /%s ...\n", name)
 	header := &tar.Header{
 		Name:     name,
 		Size:     int64(len(dockerConfigFileRaw)),
@@ -158,28 +141,13 @@ func Abracadabra(src string, options ...MagicOption) error {
 		return fmt.Errorf("copy json file to tar: %v", err)
 	}
 
-	// Create the mappings file
-	creationTime = v1.Time{}
-	name = fmt.Sprintf("%s/mappings.yml", strings.TrimPrefix(pathPrefix, "/"))
-	header = &tar.Header{
-		Name:     name,
-		Size:     int64(len(mappingsFileRaw)),
-		Typeflag: tar.TypeReg,
-		Mode:     0555,
-		ModTime:  creationTime.Time,
-	}
-	if err := tw.WriteHeader(header); err != nil {
-		return fmt.Errorf("writing header of mappings file %q: %v", header, err)
-	}
-	if _, err := io.Copy(tw, strings.NewReader(mappingsFileRaw)); err != nil {
-		return fmt.Errorf("copy mappings file to tar: %v", err)
-	}
-
+	// Create layer
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
 		return fmt.Errorf("layer from reader: %v", err)
 	}
 
+	// Append the layer to image
 	img, err := mutate.AppendLayers(base, newLayer)
 	if err != nil {
 		return fmt.Errorf("append layers: %v", err)
@@ -193,6 +161,7 @@ func Abracadabra(src string, options ...MagicOption) error {
 	cfg = cfg.DeepCopy()
 	updatePath(cfg)
 	updateDockerConfig(cfg)
+	updateMagicMappings(cfg)
 
 	img, err = mutate.ConfigFile(img, cfg)
 	if err != nil {
@@ -213,9 +182,65 @@ func Abracadabra(src string, options ...MagicOption) error {
 	return nil
 }
 
+func writeEmbeddedFileToTarAtPrefix(tw tar.Writer, filename string, prefix string) (string, error) {
+	basename := path.Base(filename)
+	tarFilename := fmt.Sprintf("%s/%s/%s",
+		strings.TrimPrefix(pathPrefix, "/"), prefix, basename)
+	log.Printf("Adding /%s ...\n", tarFilename)
+	file, err := embedded.Open(filename)
+	if err != nil {
+		return "", fmt.Errorf("opening embedded file %s: %v", filename, err)
+	}
+	defer file.Close()
+
+	// In the case of the mappings files, extract the helper name
+	var helper string
+	if strings.HasSuffix(basename, ".yml") {
+		var m helperMapping
+		buf := bytes.NewBuffer(nil)
+		_, err = io.Copy(buf, file)
+		if err != nil {
+			return "", fmt.Errorf("open mapping %s to buffer: %v", filename, err)
+		}
+		err = yaml.Unmarshal(buf.Bytes(), &m)
+		if err != nil {
+			return "", fmt.Errorf("parsing mappings for %s: %v", filename, err)
+		}
+		helper = m.Helper
+	}
+
+	// Copy file into the tar
+	creationTime := v1.Time{}
+	info, err := file.Stat()
+	if err != nil {
+		return "", fmt.Errorf("stat file %s: %v", filename, err)
+	}
+	header := &tar.Header{
+		Name:     tarFilename,
+		Size:     info.Size(),
+		Typeflag: tar.TypeReg,
+		// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
+		// Use a fixed Mode, so that this isn't sensitive to the directory and umask
+		// under which it was created. Additionally, windows can only set 0222,
+		// 0444, or 0666, none of which are executable.
+		Mode:    0555,
+		ModTime: creationTime.Time,
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		return "", fmt.Errorf("writing header %q: %v", header, err)
+	}
+	if _, err := io.Copy(&tw, file); err != nil {
+		return "", fmt.Errorf("copy to tar %q: %v", file, err)
+	}
+
+	return helper, nil
+}
+
 // Adapted from https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
 func updatePath(cf *v1.ConfigFile) {
 	newPath := fmt.Sprintf("%s/bin", pathPrefix)
+
+	log.Printf("Prepending PATH with %s ...\n", newPath)
 
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
@@ -236,6 +261,7 @@ func updatePath(cf *v1.ConfigFile) {
 }
 
 func updateDockerConfig(cf *v1.ConfigFile) {
+	log.Printf("Setting DOCKER_CONFIG to %s ...\n", pathPrefix)
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
@@ -247,4 +273,34 @@ func updateDockerConfig(cf *v1.ConfigFile) {
 		}
 	}
 	cf.Config.Env = append(cf.Config.Env, "DOCKER_CONFIG="+pathPrefix)
+}
+
+func updateMagicMappings(cf *v1.ConfigFile) {
+	magicMappings := fmt.Sprintf("%s/mappings", pathPrefix)
+	log.Printf("Setting MAGIC_MAPPINGS to %s ...\n", magicMappings)
+	for i, env := range cf.Config.Env {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := parts[0]
+		if key == "MAGIC_MAPPINGS" {
+			cf.Config.Env[i] = "MAGIC_MAPPINGS=" + magicMappings
+		}
+	}
+	cf.Config.Env = append(cf.Config.Env, "MAGIC_MAPPINGS="+magicMappings)
+}
+
+func getSupportedHelpers() ([]string, error) {
+	mappings, err := embedded.ReadDir("default-mappings")
+	if err != nil {
+		return nil, err
+	}
+	var supportedHelpers []string
+	for _, mapping := range mappings {
+		filename := path.Base(mapping.Name())
+		slug := strings.TrimSuffix(filename, path.Ext(filename))
+		supportedHelpers = append(supportedHelpers, slug)
+	}
+	return supportedHelpers, nil
 }

@@ -1,12 +1,12 @@
 .PHONY: fetch-helpers
 fetch-helpers:
-	scripts/helpers/fetch-helper-acr-env.sh
-	scripts/helpers/fetch-helper-ecr-login.sh
-	scripts/helpers/fetch-helper-gcr.sh
+	for i in $(shell find mappings -name '*.yml' -exec basename {} .yml \;); do \
+		scripts/helpers/fetch-helper-$$i.sh; \
+	done
 
 .PHONY: copy-mappings
 copy-mappings:
-	cp default-mappings.yml pkg/magician/default-mappings.yml
+	cp -r mappings pkg/magician/default-mappings
 
 .PHONY: vendor
 vendor:
@@ -37,4 +37,5 @@ acceptance:
 
 .PHONY: clean
 clean:
-	rm -rf .venv/ .cover/ .robot/ bin/ tmp/ vendor/ pkg/magician/credential-helpers/
+	rm -rf .venv/ .cover/ .robot/ bin/ tmp/ vendor/ \
+		pkg/magician/credential-helpers/ pkg/magician/default-mappings/

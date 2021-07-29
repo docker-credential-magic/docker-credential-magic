@@ -19,7 +19,7 @@ vendor/
 .vscode/
 bin/
 pkg/magician/credential-helpers/
-pkg/magician/default-mappings.yml
+pkg/magician/default-mappings/
 sa.json
 tmp/
 .cache/

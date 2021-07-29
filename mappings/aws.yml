@@ -1,0 +1,3 @@
+helper: ecr-login
+domains:
+  - amazonaws.com
