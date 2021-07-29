@@ -4,33 +4,30 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
 )
 
 
 const (
-	helperACREnv   = "acr-env"
-	helperECRLogin = "ecr-login"
-	helperGCR      = "gcr"
-
 	anonymousTokenResponse = "{\"Username\":\"\",\"Secret\":\"\"}"
 )
 
 var (
-	// Root domains mapped to helpers that support auth for them
-	domainHelperMap = map[string]string{
-		"amazonaws.com": helperECRLogin,
-		"azurecr.io":    helperACREnv,
-		"gcr.io":        helperGCR,
-		"pkg.dev":       helperGCR,
-	}
-
 	errorInvalidDomain = errors.New("supplied domain is invalid")
 
 	// TODO: should use existing cred helper/docker config if no match
 	errorHelperNotFound = errors.New("could not determine correct helper")
+
+	// TODO: should allow XDG
+	mappingRootDirNotFound = errors.New("DOCKER_CREDENTIAL_MAGIC_CONFIG not set")
 )
 
 func main() {
@@ -80,9 +77,35 @@ func parseDomain(s string) (string, error) {
 }
 
 func getHelperExecutable(domain string) (string, error) {
-	helper, ok := domainHelperMap[domain]
-	if !ok {
-		return "", errorHelperNotFound
+	mappingRootDir := os.Getenv("DOCKER_CREDENTIAL_MAGIC_CONFIG")
+	if mappingRootDir == "" {
+		// TODO: allow read from XDG
+		return "", mappingRootDirNotFound
 	}
-	return fmt.Sprintf("docker-credential-%s", helper), nil
+	mappingRootDirAbsPath, err := filepath.Abs(mappingRootDir)
+	if err != nil {
+		return "", mappingRootDirNotFound
+	}
+	filepaths, err := ioutil.ReadDir(mappingRootDirAbsPath)
+	if err != nil {
+		return "", mappingRootDirNotFound
+	}
+	for _, filepath := range filepaths {
+		filename := filepath.Name()
+		b, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return "", fmt.Errorf("unable to open %s: %v", filename, err)
+		}
+		var m types.HelperMapping
+		err = yaml.Unmarshal(b, &m)
+		if err != nil {
+			return "", fmt.Errorf("parsing mappings for %s: %v", filename, err)
+		}
+		for _, d := range m.Domains {
+			if d == domain {
+				return fmt.Sprintf("docker-credential-%s", m.Helper), nil
+			}
+		}
+	}
+	return "", errorHelperNotFound
 }

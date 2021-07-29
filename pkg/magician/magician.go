@@ -19,6 +19,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"gopkg.in/yaml.v2"
+
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
 )
 
 const (
@@ -38,11 +40,6 @@ type (
 	magicOperation struct {
 		tag     string
 		helpers []string
-	}
-
-	helperMapping struct {
-		Helper  string
-		Domains []string
 	}
 )
 
@@ -208,7 +205,7 @@ func writeEmbeddedFileToTarAtPrefix(tw *tar.Writer, filename string, prefix stri
 	// In the case of the mappings files, extract the helper name
 	var helper string
 	if strings.HasSuffix(basename, ".yml") {
-		var m helperMapping
+		var m types.HelperMapping
 		err = yaml.Unmarshal(b, &m)
 		if err != nil {
 			return "", fmt.Errorf("parsing mappings for %s: %v", filename, err)
