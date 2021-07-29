@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"path"
 	"strings"
@@ -21,7 +22,9 @@ import (
 )
 
 const (
-	pathPrefix = "/opt/magic"
+	pathPrefix     = "/opt/magic"
+	binarySubdir   = "bin"
+	mappingsSubdir = "etc"
 )
 
 var (
@@ -33,7 +36,7 @@ type (
 	MagicOption func(*magicOperation)
 
 	magicOperation struct {
-		tag string
+		tag     string
 		helpers []string
 	}
 
@@ -108,7 +111,7 @@ func Abracadabra(src string, options ...MagicOption) error {
 	var helperNames []string
 	for _, slug := range requestedHelpers {
 		mappingsFilename := fmt.Sprintf("default-mappings/%s.yml", slug)
-		helperName, err := writeEmbeddedFileToTarAtPrefix(*tw, mappingsFilename, "mappings")
+		helperName, err := writeEmbeddedFileToTarAtPrefix(tw, mappingsFilename, mappingsSubdir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
 		}
@@ -116,7 +119,7 @@ func Abracadabra(src string, options ...MagicOption) error {
 	}
 	for _, helperName := range helperNames {
 		helperFilename := fmt.Sprintf("credential-helpers/docker-credential-%s", helperName)
-		_, err = writeEmbeddedFileToTarAtPrefix(*tw, helperFilename, "bin")
+		_, err = writeEmbeddedFileToTarAtPrefix(tw, helperFilename, binarySubdir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
 		}
@@ -182,7 +185,7 @@ func Abracadabra(src string, options ...MagicOption) error {
 	return nil
 }
 
-func writeEmbeddedFileToTarAtPrefix(tw tar.Writer, filename string, prefix string) (string, error) {
+func writeEmbeddedFileToTarAtPrefix(tw *tar.Writer, filename string, prefix string) (string, error) {
 	basename := path.Base(filename)
 	tarFilename := fmt.Sprintf("%s/%s/%s",
 		strings.TrimPrefix(pathPrefix, "/"), prefix, basename)
@@ -193,16 +196,16 @@ func writeEmbeddedFileToTarAtPrefix(tw tar.Writer, filename string, prefix strin
 	}
 	defer file.Close()
 
+	b, err := ioutil.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("reader readall file %s: %v", filename, err)
+	}
+
 	// In the case of the mappings files, extract the helper name
 	var helper string
 	if strings.HasSuffix(basename, ".yml") {
 		var m helperMapping
-		buf := bytes.NewBuffer(nil)
-		_, err = io.Copy(buf, file)
-		if err != nil {
-			return "", fmt.Errorf("open mapping %s to buffer: %v", filename, err)
-		}
-		err = yaml.Unmarshal(buf.Bytes(), &m)
+		err = yaml.Unmarshal(b, &m)
 		if err != nil {
 			return "", fmt.Errorf("parsing mappings for %s: %v", filename, err)
 		}
@@ -215,9 +218,10 @@ func writeEmbeddedFileToTarAtPrefix(tw tar.Writer, filename string, prefix strin
 	if err != nil {
 		return "", fmt.Errorf("stat file %s: %v", filename, err)
 	}
+	size := info.Size()
 	header := &tar.Header{
 		Name:     tarFilename,
-		Size:     info.Size(),
+		Size:     size,
 		Typeflag: tar.TypeReg,
 		// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
 		// Use a fixed Mode, so that this isn't sensitive to the directory and umask
@@ -229,7 +233,7 @@ func writeEmbeddedFileToTarAtPrefix(tw tar.Writer, filename string, prefix strin
 	if err := tw.WriteHeader(header); err != nil {
 		return "", fmt.Errorf("writing header %q: %v", header, err)
 	}
-	if _, err := io.Copy(&tw, file); err != nil {
+	if _, err := io.Copy(tw, bytes.NewBuffer(b)); err != nil {
 		return "", fmt.Errorf("copy to tar %q: %v", file, err)
 	}
 
@@ -238,7 +242,7 @@ func writeEmbeddedFileToTarAtPrefix(tw tar.Writer, filename string, prefix strin
 
 // Adapted from https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
 func updatePath(cf *v1.ConfigFile) {
-	newPath := fmt.Sprintf("%s/bin", pathPrefix)
+	newPath := fmt.Sprintf("%s/%s", pathPrefix, binarySubdir)
 
 	log.Printf("Prepending PATH with %s ...\n", newPath)
 
@@ -276,7 +280,7 @@ func updateDockerConfig(cf *v1.ConfigFile) {
 }
 
 func updateMagicMappings(cf *v1.ConfigFile) {
-	magicMappings := fmt.Sprintf("%s/mappings", pathPrefix)
+	magicMappings := fmt.Sprintf("%s/%s", pathPrefix, mappingsSubdir)
 	log.Printf("Setting MAGIC_MAPPINGS to %s ...\n", magicMappings)
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
