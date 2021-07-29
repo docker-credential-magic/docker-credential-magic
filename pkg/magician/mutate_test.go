@@ -29,7 +29,7 @@ var (
 	testPassword             = "mypass"
 )
 
-type MagicianTestSuite struct {
+type MutateTestSuite struct {
 	suite.Suite
 	CacheRootDir       string
 	DockerRegistryHost string
@@ -37,7 +37,7 @@ type MagicianTestSuite struct {
 	RemoteOpts         []remote.Option
 }
 
-func (suite *MagicianTestSuite) SetupSuite() {
+func (suite *MutateTestSuite) SetupSuite() {
 	suite.CacheRootDir = testCacheRootDir
 	os.RemoveAll(suite.CacheRootDir)
 	os.Mkdir(suite.CacheRootDir, 0700)
@@ -99,28 +99,28 @@ func (suite *MagicianTestSuite) SetupSuite() {
 	go dockerRegistry.ListenAndServe()
 }
 
-func (suite *MagicianTestSuite) TearDownSuite() {
+func (suite *MutateTestSuite) TearDownSuite() {
 	os.RemoveAll(suite.CacheRootDir)
 }
 
-func (suite *MagicianTestSuite) Test_0_ImageNoExistingCredentials() {
+func (suite *MutateTestSuite) Test_0_ImageNoExistingCredentials() {
 	img := empty.Image
 	ref := *suite.TestReferences[0]
 	err := remote.Write(ref, img, suite.RemoteOpts...)
 	suite.Nil(err, "remote write for test0 setup")
 
 	refStr := ref.String()
-	err = Abracadabra(refStr)
-	suite.Nil(err, "test0 Abracadabra fails")
+	err = Mutate(refStr)
+	suite.Nil(err, "test0 Mutate fails")
 
 	altTag := fmt.Sprintf("%s.magic", ref.String())
-	opts := []MagicOption{MagicOptWithTag(altTag)}
-	err = Abracadabra(refStr, opts...)
-	suite.Nil(err, "test0 Abracadabra fails with alt tag")
+	opts := []MutateOption{MutateOptWithTag(altTag)}
+	err = Mutate(refStr, opts...)
+	suite.Nil(err, "test0 Mutate fails with alt tag")
 }
 
 // TODO this test
-func (suite *MagicianTestSuite) Test_1_ImageExistingCredentialsHomeJSON() {
+func (suite *MutateTestSuite) Test_1_ImageExistingCredentialsHomeJSON() {
 	img := empty.Image
 	ref := *suite.TestReferences[1]
 	err := remote.Write(ref, img, suite.RemoteOpts...)
@@ -128,24 +128,24 @@ func (suite *MagicianTestSuite) Test_1_ImageExistingCredentialsHomeJSON() {
 }
 
 // TODO this test
-func (suite *MagicianTestSuite) Test_2_ImageExistingCredentialsEnvVar() {
+func (suite *MutateTestSuite) Test_2_ImageExistingCredentialsEnvVar() {
 	img := empty.Image
 	ref := *suite.TestReferences[2]
 	err := remote.Write(ref, img, suite.RemoteOpts...)
 	suite.Nil(err, "remote write for test0 setup")
 }
 
-func (suite *MagicianTestSuite) Test_3_BadInput() {
+func (suite *MutateTestSuite) Test_3_BadInput() {
 	badRefStr := fmt.Sprintf("%s/magician:::::woo!", suite.DockerRegistryHost)
-	err := Abracadabra(badRefStr)
+	err := Mutate(badRefStr)
 	suite.NotNil(err, "no error with bad ref")
 
 	missingRefStr := fmt.Sprintf("%s/magician:aintrealdawg", suite.DockerRegistryHost)
-	err = Abracadabra(missingRefStr)
+	err = Mutate(missingRefStr)
 	suite.NotNil(err, "no error with missing ref")
 }
 
 
 func TestMagicianTestSuite(t *testing.T) {
-	suite.Run(t, new(MagicianTestSuite))
+	suite.Run(t, new(MutateTestSuite))
 }

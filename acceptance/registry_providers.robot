@@ -66,7 +66,7 @@ Stop local test registry
     Should pass   docker rm -f %{CONTAINER_NAME}
 
 Mutate remote test image
-    Should pass   docker-credential-magician %{REMOTE_IMAGE} -t %{LOCAL_IMAGE}
+    Should pass   docker-credential-magician mutate %{REMOTE_IMAGE} -t %{LOCAL_IMAGE}
 
 Suite Setup
    Start local test registry

@@ -35,22 +35,28 @@ var (
 )
 
 type (
-	MagicOption func(*magicOperation)
+	MutateOption func(*mutateOperation)
 
-	magicOperation struct {
+	mutateOperation struct {
 		tag     string
 		helpers []string
 	}
 )
 
-func MagicOptWithTag(tag string) MagicOption {
-	return func(operation *magicOperation) {
+func MutateOptWithTag(tag string) MutateOption {
+	return func(operation *mutateOperation) {
 		operation.tag = tag
 	}
 }
 
-func Abracadabra(src string, options ...MagicOption) error {
-	operation := &magicOperation{}
+func MutateOptWithHelpers(helpers []string) MutateOption {
+	return func(operation *mutateOperation) {
+		operation.helpers = helpers
+	}
+}
+
+func Mutate(src string, options ...MutateOption) error {
+	operation := &mutateOperation{}
 	for _, option := range options {
 		option(operation)
 	}

@@ -60,7 +60,8 @@ various credential helpers, (2) set the default credential store to `magic`,
 and (3) push the new image to a registry running at `localhost:5000`:
 
 ```
-$ docker-credential-magician gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0 \
+$ docker-credential-magician mutate \
+    gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0 \
     -t localhost:5000/cosign:v0.5.0-magic
 2021/07/26 17:42:31 Pulling gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0 ...
 2021/07/26 17:42:38 Augmenting image with credential helpers ...
