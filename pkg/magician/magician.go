@@ -117,6 +117,10 @@ func Abracadabra(src string, options ...MagicOption) error {
 		}
 		helperNames = append(helperNames, helperName)
 	}
+
+	// Add our magic helper to the mix
+	helperNames = append(helperNames, "magic")
+
 	for _, helperName := range helperNames {
 		helperFilename := fmt.Sprintf("credential-helpers/docker-credential-%s", helperName)
 		_, err = writeEmbeddedFileToTarAtPrefix(tw, helperFilename, binarySubdir)
