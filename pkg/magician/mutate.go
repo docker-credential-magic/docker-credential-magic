@@ -287,8 +287,7 @@ func updateDockerConfig(cf *v1.ConfigFile) {
 }
 
 func updateMagicMappings(cf *v1.ConfigFile) {
-	magicMappings := fmt.Sprintf("%s/%s", pathPrefix, mappingsSubdir)
-	log.Printf("Setting DOCKER_CREDENTIAL_MAGIC_CONFIG to %s ...\n", magicMappings)
+	log.Printf("Setting DOCKER_CREDENTIAL_MAGIC_CONFIG to %s ...\n", pathPrefix)
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
@@ -296,10 +295,10 @@ func updateMagicMappings(cf *v1.ConfigFile) {
 		}
 		key := parts[0]
 		if key == "DOCKER_CREDENTIAL_MAGIC_CONFIG" {
-			cf.Config.Env[i] = "DOCKER_CREDENTIAL_MAGIC_CONFIG=" + magicMappings
+			cf.Config.Env[i] = "DOCKER_CREDENTIAL_MAGIC_CONFIG=" + pathPrefix
 		}
 	}
-	cf.Config.Env = append(cf.Config.Env, "DOCKER_CREDENTIAL_MAGIC_CONFIG="+magicMappings)
+	cf.Config.Env = append(cf.Config.Env, "DOCKER_CREDENTIAL_MAGIC_CONFIG="+pathPrefix)
 }
 
 func getSupportedHelpers() ([]string, error) {

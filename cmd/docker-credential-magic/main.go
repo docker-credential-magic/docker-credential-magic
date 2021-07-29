@@ -108,6 +108,8 @@ func getHelperExecutable(domain string) (string, error) {
 	mappingRootDir := os.Getenv("DOCKER_CREDENTIAL_MAGIC_CONFIG")
 	if mappingRootDir == "" {
 		mappingRootDir = filepath.Join(xdg.ConfigHome, "magic", "etc")
+	} else {
+		mappingRootDir = filepath.Join(mappingRootDir, "etc")
 	}
 	mappingRootDirAbsPath, err := filepath.Abs(mappingRootDir)
 	if err != nil {
