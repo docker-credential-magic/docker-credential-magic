@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adrg/xdg"
 	"gopkg.in/yaml.v2"
 
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
 )
-
 
 const (
 	anonymousTokenResponse = "{\"Username\":\"\",\"Secret\":\"\"}"
@@ -104,14 +104,18 @@ func parseDomain(s string) (string, error) {
 }
 
 func getHelperExecutable(domain string) (string, error) {
+	var mappingRootDirAbsPath string
 	mappingRootDir := os.Getenv("DOCKER_CREDENTIAL_MAGIC_CONFIG")
 	if mappingRootDir == "" {
-		// TODO: allow read from XDG
-		return "", mappingRootDirNotFound
+		mappingRootDir = filepath.Join(xdg.ConfigHome, "magic", "etc")
 	}
 	mappingRootDirAbsPath, err := filepath.Abs(mappingRootDir)
 	if err != nil {
 		return "", mappingRootDirNotFound
+	}
+	info, err := os.Stat(mappingRootDirAbsPath)
+	if err != nil || !info.IsDir() {
+		return "", fmt.Errorf("mappings directory does not exist: %s", mappingRootDirAbsPath)
 	}
 	filepaths, err := ioutil.ReadDir(mappingRootDirAbsPath)
 	if err != nil {
