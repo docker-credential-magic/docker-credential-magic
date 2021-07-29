@@ -90,8 +90,8 @@ func getHelperExecutable(domain string) (string, error) {
 	if err != nil {
 		return "", mappingRootDirNotFound
 	}
-	for _, filepath := range filepaths {
-		filename := filepath.Name()
+	for _, fp := range filepaths {
+		filename := filepath.Join(mappingRootDirAbsPath, fp.Name())
 		b, err := ioutil.ReadFile(filename)
 		if err != nil {
 			return "", fmt.Errorf("unable to open %s: %v", filename, err)
