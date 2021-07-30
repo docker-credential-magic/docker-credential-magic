@@ -15,7 +15,7 @@ jobs:
         with:
           go-version: 1.16.x
       - name: prepare build environment
-        run: make clean vendor fetch-helpers build-magic-embedded copy-mappings
+        run: make clean vendor fetch-helpers copy-mappings build-magic-embedded
       - uses: goreleaser/goreleaser-action@v2
         with:
           version: latest

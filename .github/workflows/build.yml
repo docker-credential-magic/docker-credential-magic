@@ -18,8 +18,8 @@ jobs:
           make clean
           make vendor
           make fetch-helpers
-          make build-magic-embedded
           make copy-mappings
+          make build-magic-embedded
           make build-magician
       # Note: unit tests *after* build steps since magician relies on helpers etc.
       - name: Unit tests

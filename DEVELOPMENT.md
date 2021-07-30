@@ -16,16 +16,16 @@ First, fetch all credential helper binaries into `pkg/magician/credential-helper
 make fetch-helpers
 ```
 
-Next, build our custom `magic` helper into `pkg/magician/credential-helpers/`:
-
-```
-make build-magic-embedded
-```
-
-Finally, copy over the default mappings file into  `pkg/magician/`:
+Next, copy over the default mappings file into  `pkg/magician/` and `cmd/docker-credential-magic/`:
 
 ```
 make copy-mappings
+```
+
+Finally, build our custom `magic` helper into `pkg/magician/credential-helpers/`:
+
+```
+make build-magic-embedded
 ```
 
 Note: All embedded helpers are for Linux amd64 architecture.

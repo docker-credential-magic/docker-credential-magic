@@ -52,4 +52,5 @@ acceptance:
 .PHONY: clean
 clean:
 	rm -rf .venv/ .cover/ .robot/ bin/ tmp/ vendor/ \
-		pkg/magician/credential-helpers/ pkg/magician/default-mappings/
+		pkg/magician/credential-helpers/ pkg/magician/default-mappings/ \
+		cmd/docker-credential-magic/default-mappings/
