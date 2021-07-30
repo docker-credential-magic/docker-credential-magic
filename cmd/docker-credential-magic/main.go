@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"embed"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +15,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/constants"
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/embedded/mappings"
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
 )
 
@@ -28,9 +28,6 @@ var (
 
 	// TODO: should use existing cred helper/docker config if no match
 	errorHelperNotFound = errors.New("could not determine correct helper")
-
-	//go:embed default-mappings/*
-	embedded embed.FS
 
 	validHelper = regexp.MustCompile(`^[a-z0-9_-].*?$`)
 )
@@ -55,7 +52,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Printf("Usage: docker-credential-magic <%s|env|init|version>",
+	fmt.Printf("Usage: docker-credential-magic <%s|env|init|version>\n",
 		constants.HelperSubcommandGet)
 	os.Exit(1)
 }
@@ -115,7 +112,7 @@ func subcommandInit() {
 			os.Exit(1)
 		}
 	}
-	items, err := embedded.ReadDir("default-mappings")
+	items, err := mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
 	if err != nil {
 		fmt.Printf("Error reading embedded directory: %s\n", err.Error())
 		os.Exit(1)
@@ -127,8 +124,8 @@ func subcommandInit() {
 			continue
 		}
 		fmt.Printf("Creating mapping file '%s' ...\n", filename)
-		embeddedName := filepath.Join("default-mappings", item.Name())
-		file, err := embedded.Open(embeddedName)
+		embeddedName := filepath.Join(constants.EmbeddedParentDir, item.Name())
+		file, err := mappings.Embedded.Open(embeddedName)
 		if err != nil {
 			fmt.Printf("Error loading embedded file %s: %s\n", embeddedName, err.Error())
 			os.Exit(1)

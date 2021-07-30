@@ -3,12 +3,13 @@ package magician
 import (
 	"archive/tar"
 	"bytes"
-	"embed"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -21,12 +22,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/constants"
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/embedded/helpers"
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/embedded/mappings"
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
-)
-
-var (
-	//go:embed credential-helpers/* default-mappings/*
-	embedded embed.FS
 )
 
 type (
@@ -108,7 +106,8 @@ func Mutate(src string, options ...MutateOption) error {
 	tw := tar.NewWriter(&b)
 	var helperNames []string
 	for _, slug := range requestedHelpers {
-		mappingsFilename := fmt.Sprintf("default-mappings/%s.yml", slug)
+		mappingsFilename := filepath.Join(constants.EmbeddedParentDir,
+			fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
 		helperName, err := writeEmbeddedFileToTarAtPrefix(tw, mappingsFilename, constants.MappingsSubdir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
@@ -191,7 +190,13 @@ func writeEmbeddedFileToTarAtPrefix(tw *tar.Writer, filename string, prefix stri
 	tarFilename := fmt.Sprintf("%s/%s/%s",
 		strings.TrimPrefix(constants.MagicRootDir, "/"), prefix, basename)
 	log.Printf("Adding /%s ...\n", tarFilename)
-	file, err := embedded.Open(filename)
+	var file fs.File
+	var err error
+	if strings.HasSuffix(filename, fmt.Sprintf(".%s", constants.ExtensionYAML)) {
+		file, err = mappings.Embedded.Open(filename)
+	} else {
+		file, err = helpers.Embedded.Open(filename)
+	}
 	if err != nil {
 		return "", fmt.Errorf("opening embedded file %s: %v", filename, err)
 	}
@@ -204,7 +209,7 @@ func writeEmbeddedFileToTarAtPrefix(tw *tar.Writer, filename string, prefix stri
 
 	// In the case of the mappings files, extract the helper name
 	var helper string
-	if strings.HasSuffix(basename, ".yml") {
+	if strings.HasSuffix(basename, fmt.Sprintf(".%s", constants.ExtensionYAML)) {
 		var m types.HelperMapping
 		err = yaml.Unmarshal(b, &m)
 		if err != nil {
@@ -296,7 +301,7 @@ func updateMagicMappings(cf *v1.ConfigFile) {
 }
 
 func getSupportedHelpers() ([]string, error) {
-	mappings, err := embedded.ReadDir("default-mappings")
+	mappings, err := mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
 	if err != nil {
 		return nil, err
 	}

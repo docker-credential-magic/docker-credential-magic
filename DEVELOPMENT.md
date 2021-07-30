@@ -22,7 +22,7 @@ Next, copy over the default mappings file into  `pkg/magician/` and `cmd/docker-
 make copy-mappings
 ```
 
-Finally, build our custom `magic` helper into `pkg/magician/credential-helpers/`:
+Finally, build our custom `magic` helper into `pkg/embedded/helpers/embedded/`:
 
 ```
 make build-magic-embedded

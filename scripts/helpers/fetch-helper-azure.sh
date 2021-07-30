@@ -9,8 +9,8 @@ ACR_HELPER_BINARY_SHA256="98ea9e979fd9a1094209b39f783e6a4d8c5d864f979d8078cdc348
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR/../../
 
-mkdir -p pkg/magician/credential-helpers/
-cd pkg/magician/credential-helpers/
+mkdir -p pkg/embedded/helpers/embedded/
+cd pkg/embedded/helpers/embedded/
 
 if [[ ! -f docker-credential-acr-env ]]; then
   TAR_FILENAME="docker-credential-acr-env_${ACR_HELPER_VERSION}_Linux_x86_64.tar.gz"

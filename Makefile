@@ -15,8 +15,7 @@ fetch-helpers:
 
 .PHONY: copy-mappings
 copy-mappings:
-	cp -r mappings pkg/magician/default-mappings
-	cp -r mappings cmd/docker-credential-magic/default-mappings
+	cp -r mappings pkg/embedded/mappings/embedded
 
 .PHONY: vendor
 vendor:
@@ -32,7 +31,7 @@ build-magic:
 build-magic-embedded:
 	GOOS=linux GOARCH=amd64 \
 		go build -ldflags="-X main.Version=$(VERSION)" \
-			-o pkg/magician/credential-helpers/docker-credential-magic \
+			-o pkg/embedded/helpers/embedded/docker-credential-magic \
 			.../cmd/docker-credential-magic
 
 .PHONY: build-magician
@@ -52,5 +51,5 @@ acceptance:
 .PHONY: clean
 clean:
 	rm -rf .venv/ .cover/ .robot/ bin/ tmp/ vendor/ \
-		pkg/magician/credential-helpers/ pkg/magician/default-mappings/ \
-		cmd/docker-credential-magic/default-mappings/
+		pkg/embedded/helpers/embedded \
+		pkg/embedded/mappings/embedded
