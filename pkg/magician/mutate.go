@@ -119,7 +119,8 @@ func Mutate(src string, options ...MutateOption) error {
 	helperNames = append(helperNames, "magic")
 
 	for _, helperName := range helperNames {
-		helperFilename := fmt.Sprintf("credential-helpers/docker-credential-%s", helperName)
+		helperFilename := filepath.Join(constants.EmbeddedParentDir,
+			fmt.Sprintf("docker-credential-%s", helperName))
 		_, err = writeEmbeddedFileToTarAtPrefix(tw, helperFilename, constants.BinariesSubdir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
