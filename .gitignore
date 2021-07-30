@@ -18,8 +18,8 @@ vendor/
 .idea/
 .vscode/
 bin/
-pkg/embedded/helpers/embedded/
-pkg/embedded/mappings/embedded/
+internal/embedded/helpers/embedded/
+internal/embedded/mappings/embedded/
 sa.json
 tmp/
 .cache/

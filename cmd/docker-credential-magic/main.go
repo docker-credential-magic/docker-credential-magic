@@ -14,9 +14,9 @@ import (
 	"github.com/adrg/xdg"
 	"gopkg.in/yaml.v2"
 
-	"github.com/docker-credential-magic/docker-credential-magic/pkg/constants"
-	"github.com/docker-credential-magic/docker-credential-magic/pkg/embedded/mappings"
-	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
+	"github.com/docker-credential-magic/docker-credential-magic/internal/constants"
+	"github.com/docker-credential-magic/docker-credential-magic/internal/embedded/mappings"
+	"github.com/docker-credential-magic/docker-credential-magic/internal/types"
 )
 
 var (

@@ -10,19 +10,19 @@ make vendor
 
 ### Generating embedded content
 
-First, fetch all credential helper binaries into `pkg/magician/credential-helpers/`:
+First, fetch all credential helper binaries into `internal/embedded/magician/embedded/`:
 
 ```
 make fetch-helpers
 ```
 
-Next, copy over the default mappings file into  `pkg/magician/` and `cmd/docker-credential-magic/`:
+Next, copy over the default mappings file into `internal/embedded/mappings/embedded/`:
 
 ```
 make copy-mappings
 ```
 
-Finally, build our custom `magic` helper into `pkg/embedded/helpers/embedded/`:
+Finally, build our custom `magic` helper into `internal/embedded/helpers/embedded/`:
 
 ```
 make build-magic-embedded
