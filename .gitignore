@@ -20,6 +20,7 @@ vendor/
 bin/
 pkg/magician/credential-helpers/
 pkg/magician/default-mappings/
+cmd/docker-credential-magic/default-mappings/
 sa.json
 tmp/
 .cache/

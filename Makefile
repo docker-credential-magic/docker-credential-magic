@@ -16,6 +16,7 @@ fetch-helpers:
 .PHONY: copy-mappings
 copy-mappings:
 	cp -r mappings pkg/magician/default-mappings
+	cp -r mappings cmd/docker-credential-magic/default-mappings
 
 .PHONY: vendor
 vendor:

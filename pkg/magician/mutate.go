@@ -20,13 +20,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"gopkg.in/yaml.v2"
 
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/constants"
 	"github.com/docker-credential-magic/docker-credential-magic/pkg/types"
-)
-
-const (
-	pathPrefix     = "/opt/magic"
-	binarySubdir   = "bin"
-	mappingsSubdir = "etc"
 )
 
 var (
@@ -114,7 +109,7 @@ func Mutate(src string, options ...MutateOption) error {
 	var helperNames []string
 	for _, slug := range requestedHelpers {
 		mappingsFilename := fmt.Sprintf("default-mappings/%s.yml", slug)
-		helperName, err := writeEmbeddedFileToTarAtPrefix(tw, mappingsFilename, mappingsSubdir)
+		helperName, err := writeEmbeddedFileToTarAtPrefix(tw, mappingsFilename, constants.MappingsSubdir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
 		}
@@ -126,20 +121,19 @@ func Mutate(src string, options ...MutateOption) error {
 
 	for _, helperName := range helperNames {
 		helperFilename := fmt.Sprintf("credential-helpers/docker-credential-%s", helperName)
-		_, err = writeEmbeddedFileToTarAtPrefix(tw, helperFilename, binarySubdir)
+		_, err = writeEmbeddedFileToTarAtPrefix(tw, helperFilename, constants.BinariesSubdir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
 		}
 	}
 
 	// Create our custom Docker config file, with magic catch-all
-	dockerConfigFileRaw := "{\"credsStore\":\"magic\"}\n"
 	creationTime := v1.Time{}
-	name := fmt.Sprintf("%s/config.json", strings.TrimPrefix(pathPrefix, "/"))
+	name := fmt.Sprintf("%s/%s", strings.TrimPrefix(constants.MagicRootDir, "/"), constants.DockerConfigFileBasename)
 	log.Printf("Adding /%s ...\n", name)
 	header := &tar.Header{
 		Name:     name,
-		Size:     int64(len(dockerConfigFileRaw)),
+		Size:     int64(len(constants.DockerConfigFileContents)),
 		Typeflag: tar.TypeReg,
 		Mode:     0555,
 		ModTime:  creationTime.Time,
@@ -147,7 +141,7 @@ func Mutate(src string, options ...MutateOption) error {
 	if err := tw.WriteHeader(header); err != nil {
 		return fmt.Errorf("writing header of json file %q: %v", header, err)
 	}
-	if _, err := io.Copy(tw, strings.NewReader(dockerConfigFileRaw)); err != nil {
+	if _, err := io.Copy(tw, strings.NewReader(constants.DockerConfigFileContents)); err != nil {
 		return fmt.Errorf("copy json file to tar: %v", err)
 	}
 
@@ -195,7 +189,7 @@ func Mutate(src string, options ...MutateOption) error {
 func writeEmbeddedFileToTarAtPrefix(tw *tar.Writer, filename string, prefix string) (string, error) {
 	basename := path.Base(filename)
 	tarFilename := fmt.Sprintf("%s/%s/%s",
-		strings.TrimPrefix(pathPrefix, "/"), prefix, basename)
+		strings.TrimPrefix(constants.MagicRootDir, "/"), prefix, basename)
 	log.Printf("Adding /%s ...\n", tarFilename)
 	file, err := embedded.Open(filename)
 	if err != nil {
@@ -249,9 +243,9 @@ func writeEmbeddedFileToTarAtPrefix(tw *tar.Writer, filename string, prefix stri
 
 // Adapted from https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
 func updatePath(cf *v1.ConfigFile) {
-	newPath := fmt.Sprintf("%s/%s", pathPrefix, binarySubdir)
+	newPath := fmt.Sprintf("%s/%s", constants.MagicRootDir, constants.BinariesSubdir)
 
-	log.Printf("Prepending PATH with %s ...\n", newPath)
+	log.Printf("Prepending %s with %s ...\n", constants.EnvVarPath, newPath)
 
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
@@ -260,45 +254,45 @@ func updatePath(cf *v1.ConfigFile) {
 			continue
 		}
 		key, value := parts[0], parts[1]
-		if key == "PATH" {
+		if key == constants.EnvVarPath {
 			value = fmt.Sprintf("%s:%s", newPath, value)
-			cf.Config.Env[i] = "PATH=" + value
+			cf.Config.Env[i] = constants.EnvVarPath + "=" + value
 			return
 		}
 	}
 
 	// If we get here, we never saw PATH.
-	cf.Config.Env = append(cf.Config.Env, "PATH="+newPath)
+	cf.Config.Env = append(cf.Config.Env, constants.EnvVarPath+"="+newPath)
 }
 
 func updateDockerConfig(cf *v1.ConfigFile) {
-	log.Printf("Setting DOCKER_CONFIG to %s ...\n", pathPrefix)
+	log.Printf("Setting %s to %s ...\n", constants.EnvVarDockerConfig, constants.MagicRootDir)
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
 		key := parts[0]
-		if key == "DOCKER_CONFIG" {
-			cf.Config.Env[i] = "DOCKER_CONFIG=" + pathPrefix
+		if key == constants.EnvVarDockerConfig {
+			cf.Config.Env[i] = constants.EnvVarDockerConfig + "=" + constants.MagicRootDir
 		}
 	}
-	cf.Config.Env = append(cf.Config.Env, "DOCKER_CONFIG="+pathPrefix)
+	cf.Config.Env = append(cf.Config.Env, constants.EnvVarDockerConfig+"="+constants.MagicRootDir)
 }
 
 func updateMagicMappings(cf *v1.ConfigFile) {
-	log.Printf("Setting DOCKER_CREDENTIAL_MAGIC_CONFIG to %s ...\n", pathPrefix)
+	log.Printf("Setting %s to %s ...\n", constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
 		key := parts[0]
-		if key == "DOCKER_CREDENTIAL_MAGIC_CONFIG" {
-			cf.Config.Env[i] = "DOCKER_CREDENTIAL_MAGIC_CONFIG=" + pathPrefix
+		if key == constants.EnvVarDockerCredentialMagicConfig {
+			cf.Config.Env[i] = constants.EnvVarDockerCredentialMagicConfig + "=" + constants.MagicRootDir
 		}
 	}
-	cf.Config.Env = append(cf.Config.Env, "DOCKER_CREDENTIAL_MAGIC_CONFIG="+pathPrefix)
+	cf.Config.Env = append(cf.Config.Env, constants.EnvVarDockerCredentialMagicConfig+"="+constants.MagicRootDir)
 }
 
 func getSupportedHelpers() ([]string, error) {
