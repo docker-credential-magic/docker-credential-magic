@@ -11,6 +11,7 @@
     - [Local setup](#local-setup)
   - [How to use `docker-credential-magician`](#how-to-use-docker-credential-magician)
     - [Go library](#go-library)
+- [Project history](#project-history)
 - [Contributing](#contributing)
   - [Adding support for a new helper](#adding-support-for-a-new-helper)
 
@@ -202,6 +203,14 @@ rm -rf tmp/
 ```
 
 (If there is an easier way to approach this, please let us know)
+
+## Project history
+
+The original concept for this project and its design
+can be found in the following GitHub conversations:
+
+- [google/ko/issues/3#issuecomment-749695477](https://github.com/google/ko/issues/3#issuecomment-749695477)
+- [google/go-containerregistry/issues/1059#issuecomment-867136469](https://github.com/google/go-containerregistry/issues/1059#issuecomment-867136469)
 
 ## Contributing
 
