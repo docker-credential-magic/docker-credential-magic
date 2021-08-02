@@ -192,7 +192,7 @@ func Mutate(src string, options ...MutateOption) error {
 		return fmt.Errorf("mutate config file: %v", err)
 	}
 
-	logger.Println("Pushing image to %s ...\n", tag)
+	logger.Printf("Pushing image to %s ...\n", tag)
 
 	opts := []remote.Option{
 		remote.WithAuthFromKeychain(authn.DefaultKeychain),
