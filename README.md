@@ -7,9 +7,9 @@
 - [Overview](#overview)
 - [Installation](#installation)
 - [Usage](#usage)
-  - [`docker-credential-magic`](#docker-credential-magic)
-      - [Local setup](#local-setup)
-  - [`docker-credential-magician`](#docker-credential-magician)
+  - [How to use `docker-credential-magic`](#how-to-use-docker-credential-magic)
+    - [Local setup](#local-setup)
+  - [How to use `docker-credential-magician`](#how-to-use-docker-credential-magician)
     - [Go library](#go-library)
 
 ## Overview
@@ -37,7 +37,7 @@ cat docker-credential-magic*.tar.gz | tar x -C /usr/local/bin 'docker-credential
 
 ## Usage
 
-### `docker-credential-magic`
+### How to use `docker-credential-magic`
 
 The following example shows how `docker-credential-magic` can be used to
 proxy auth to `docker-credential-gcr`, based on the detection of a `*.gcr.io` domain:
@@ -102,7 +102,7 @@ For example, to install `ecr-login` on macOS via Homebrew:
 $ brew install docker-credential-helper-ecr
 ```
 
-### `docker-credential-magician`
+### How to use `docker-credential-magician`
 
 The following example shows how `docker-credential-magician` can be used to
 (1) augment the [`cosign`](https://github.com/sigstore/cosign) image with
