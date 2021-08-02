@@ -1,0 +1,57 @@
+name: build-pr
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Build binary
+        run: |
+          make clean
+          make vendor
+          make fetch-helpers
+          make copy-mappings
+          make build-magic-embedded
+          make build-magician
+      # Note: unit tests *after* build steps since magician relies on helpers etc.
+      - name: Unit tests
+        run: |
+          make test
+      - name: Acceptance tests
+        run: |
+          pip install --upgrade virtualenv
+          make acceptance
+        env:
+          AZURE_REGISTRY_ENDPOINT: ${{ secrets.AZURE_REGISTRY_ENDPOINT }}
+          AZURE_REGISTRY_NAMESPACE: ${{ secrets.AZURE_REGISTRY_ENDPOINT }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AWS_REGISTRY_ENDPOINT: ${{ secrets.AWS_REGISTRY_ENDPOINT }}
+          AWS_REGISTRY_NAMESPACE: ${{ secrets.AZURE_REGISTRY_NAMESPACE }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GOOGLE_REGISTRY_ENDPOINT: ${{ secrets.GOOGLE_REGISTRY_ENDPOINT }}
+          GOOGLE_REGISTRY_NAMESPACE: ${{ secrets.GOOGLE_REGISTRY_NAMESPACE }}
+          GOOGLE_APPLICATION_CREDENTIALS_BASE64: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_BASE64 }}
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: magic-coverage-report-${{ github.sha }}
+          path: .cover/coverage.html
+      - name: Upload acceptance report
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: magic-acceptance-report-${{ github.sha }}
+          path: .robot/
