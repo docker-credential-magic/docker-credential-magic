@@ -114,7 +114,7 @@ func (suite *MutateTestSuite) Test_0_ImageNoExistingCredentials() {
 	suite.Nil(err, "test0 Mutate fails")
 
 	altTag := fmt.Sprintf("%s.magic", ref.String())
-	opts := []MutateOption{MutateOptWithTag(altTag)}
+	opts := []MutateOption{MutateOptWithTag(altTag), MutateOptWithWriter(os.Stdout)}
 	err = Mutate(refStr, opts...)
 	suite.Nil(err, "test0 Mutate fails with alt tag")
 }

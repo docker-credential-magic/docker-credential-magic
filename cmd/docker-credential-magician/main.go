@@ -48,6 +48,7 @@ func main() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
 			opts := []magician.MutateOption{
+				magician.MutateOptWithWriter(os.Stdout),
 				magician.MutateOptWithUserAgent(
 					fmt.Sprintf("docker-credential-magician/%s", Version)),
 			}
