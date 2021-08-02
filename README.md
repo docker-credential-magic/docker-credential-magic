@@ -11,6 +11,7 @@
     - [Local setup](#local-setup)
   - [How to use `docker-credential-magician`](#how-to-use-docker-credential-magician)
     - [Go library](#go-library)
+- [Adding support for a new helper](#adding-support-for-a-new-helper)
 
 ## Overview
 
@@ -200,3 +201,19 @@ rm -rf tmp/
 ```
 
 (If there is an easier way to approach this, please let us know)
+
+## Adding support for a new helper
+
+If you are contributing support for another helper, here are the necessary steps:
+
+- [ ] Decide on a unique slug to represent your helper (e.g. `cats`)
+- [ ] Create a valid mappings file at `mappings/<slug>.yml`
+- [ ] Create a script to download your helper at `scripts/helpers/fetch-helper-<slug>.sh`
+- [ ] Update the project README to declare support for your helper (and update output in code snips)
+- [ ] If possible, add acceptance tests for your helper. The following are relevant files:
+  - [`.github/workflows/build.yml`](./.github/workflows/build.yml)
+  - [`scripts/acceptance.sh`](./scripts/acceptance.sh)
+  - [`acceptance/registry_providers.robot`](./acceptance/registry_providers.robot)
+  - [`DEVELOPMENT.md`](./DEVELOPMENT.md)
+
+For more info on project development, please see [this page](./DEVELOPMENT.md).
