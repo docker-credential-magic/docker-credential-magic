@@ -184,7 +184,8 @@ running this example, you will see errors such as the following:
 pattern embedded/*: no matching files found
 ```
 
-To fix this, you must manually populate the embedded directories in your `GOPATH`:
+To fix this, you must manually populate these directories in your `GOPATH`
+after running `go mod tidy`:
 
 ```
 git clone https://github.com/docker-credential-magic/docker-credential-magic.git tmp/
