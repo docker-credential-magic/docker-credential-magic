@@ -8,6 +8,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
   - [`docker-credential-magic`](#docker-credential-magic)
+      - [Local setup](#local-setup)
   - [`docker-credential-magician`](#docker-credential-magician)
 
 ## Overview
@@ -50,6 +51,54 @@ $ export GOOGLE_APPLICATION_CREDENTIALS="${PWD}/service-account-key.json"
 ```
 $ echo "us.gcr.io" | docker-credential-magic get
 {"ServerURL":"us.gcr.io","Username":"_dcgcr_token","Secret":"*****"}
+```
+
+#### Local setup
+
+The primary purpose of `magic` is to be added to images via `magician`.
+However, you may wish to also use this tool on your local machine.
+
+It is required that mappings files for each supported helper are present on
+disk. The environment variable `DOCKER_CREDENTIAL_MAGIC_CONFIG` is used by `magic`
+to find these files, nested under an `etc/` subdirectory.
+
+If `DOCKER_CREDENTIAL_MAGIC_CONFIG` is not set, `magic` respects the
+[XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html),
+looking for mappings files under `$XDG_CONFIG_HOME/magic/etc/`.
+This is equivalent to the following on each operating system:
+
+- Linux: `$HOME/.config/magic/etc/`
+- macOS: `$HOME/Library/Application Support/magic/etc`
+- Windows: `%APPDATA%\magic\etc`
+
+`magic` has a useful subcommand, `init`, which will auto-create this directory
+and populate it with the default mappings files:
+
+```
+$ docker-credential-magic init
+Creating directory '/Users/me/Library/Application Support/magic/etc' ...
+Creating mapping file '/Users/me/Library/Application Support/magic/etc/aws.yml' ...
+Creating mapping file '/Users/me/Library/Application Support/magic/etc/azure.yml' ...
+Creating mapping file '/Users/me/Library/Application Support/magic/etc/gcp.yml' ...
+```
+
+If you wish to make `magic` the default credential helper, manually modify
+the `credStore` field in `$HOME/.docker/config.json`:
+
+```json
+{
+  // ...
+  "credsStore": "magic",
+  // ...
+}
+```
+
+Note: At this time, `magic` will not automatically install the supported
+helpers on your machine. You should install each of these manually.
+For example, to install `ecr-login` on macOS via Homebrew:
+
+```
+$ brew install docker-credential-helper-ecr
 ```
 
 ### `docker-credential-magician`
