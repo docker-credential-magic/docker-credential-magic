@@ -12,6 +12,8 @@ import (
 
 type mutateSettings struct {
 	Tag            string
+	HelpersDir     string
+	MappingsDir    string
 	IncludeHelpers []string
 }
 
@@ -55,13 +57,23 @@ func main() {
 			if tag := mutate.Tag; tag != "" {
 				opts = append(opts, magician.MutateOptWithTag(tag))
 			}
+			if helpersDir := mutate.HelpersDir; helpersDir != "" {
+				opts = append(opts, magician.MutateOptWithHelpersDir(helpersDir))
+			}
+			if mappingsDir := mutate.MappingsDir; mappingsDir != "" {
+				opts = append(opts, magician.MutateOptWithMappingsDir(mappingsDir))
+			}
 			if len(mutate.IncludeHelpers) > 0 {
-				opts = append(opts, magician.MutateOptWithHelpers(mutate.IncludeHelpers))
+				opts = append(opts, magician.MutateOptWithIncludeHelpers(mutate.IncludeHelpers))
 			}
 			return magician.Mutate(ref, opts...)
 		},
 	}
 	mutateCmd.Flags().StringVarP(&mutate.Tag, "tag", "t", "", "push to custom location")
+	mutateCmd.Flags().StringVarP(&mutate.HelpersDir, "helpers-dir", "", "",
+		"path containing helpers")
+	mutateCmd.Flags().StringVarP(&mutate.MappingsDir, "mappings-dir", "", "",
+		"path containing mappings")
 	mutateCmd.Flags().StringArrayVarP(&mutate.IncludeHelpers, "include", "i",
 		[]string{}, "custom helpers to include")
 

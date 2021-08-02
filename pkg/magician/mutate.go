@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -31,10 +32,12 @@ type (
 	MutateOption func(*mutateOperation)
 
 	mutateOperation struct {
-		tag       string
-		userAgent string
-		helpers   []string
-		writer    io.Writer
+		tag            string
+		userAgent      string
+		helpersDir     string
+		mappingsDir    string
+		includeHelpers []string
+		writer         io.Writer
 	}
 )
 
@@ -50,9 +53,21 @@ func MutateOptWithUserAgent(userAgent string) MutateOption {
 	}
 }
 
-func MutateOptWithHelpers(helpers []string) MutateOption {
+func MutateOptWithHelpersDir(helpersDir string) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.helpers = helpers
+		operation.helpersDir = helpersDir
+	}
+}
+
+func MutateOptWithMappingsDir(mappingsDir string) MutateOption {
+	return func(operation *mutateOperation) {
+		operation.mappingsDir = mappingsDir
+	}
+}
+
+func MutateOptWithIncludeHelpers(includeHelpers []string) MutateOption {
+	return func(operation *mutateOperation) {
+		operation.includeHelpers = includeHelpers
 	}
 }
 
@@ -86,14 +101,14 @@ func Mutate(src string, options ...MutateOption) error {
 	}
 
 	// Validate the requested helpers to include
-	supportedHelpers, err := getSupportedHelpers()
+	supportedHelpers, err := getSupportedHelpers(operation.mappingsDir)
 	if err != nil {
 		return fmt.Errorf("get supported helpers: %v", err)
 	}
 	var requestedHelpers []string
-	if len(operation.helpers) > 0 {
+	if len(operation.includeHelpers) > 0 {
 		// Make sure that the requested helpers are valid/supported
-		for _, slug := range operation.helpers {
+		for _, slug := range operation.includeHelpers {
 			slugLower := strings.ToLower(slug)
 			var isValid bool
 			for _, h := range supportedHelpers {
@@ -127,7 +142,7 @@ func Mutate(src string, options ...MutateOption) error {
 		mappingsFilename := filepath.Join(constants.EmbeddedParentDir,
 			fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
 		helperName, err := writeEmbeddedFileToTarAtPrefix(logger, tw,
-			mappingsFilename, constants.MappingsSubdir)
+			mappingsFilename, operation.mappingsDir, operation.helpersDir, constants.MappingsSubdir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
 		}
@@ -141,7 +156,7 @@ func Mutate(src string, options ...MutateOption) error {
 		helperFilename := filepath.Join(constants.EmbeddedParentDir,
 			fmt.Sprintf("docker-credential-%s", helperName))
 		_, err = writeEmbeddedFileToTarAtPrefix(logger, tw,
-			helperFilename, constants.BinariesSubdir)
+			helperFilename, operation.mappingsDir, operation.helpersDir, constants.BinariesSubdir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
 		}
@@ -210,7 +225,9 @@ func Mutate(src string, options ...MutateOption) error {
 	return nil
 }
 
-func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename string, prefix string) (string, error) {
+// TODO: clean this up / break this up big time...
+func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename string,
+	mappingsDir string, helpersDir string, prefix string) (string, error) {
 	basename := path.Base(filename)
 	tarFilename := fmt.Sprintf("%s/%s/%s",
 		strings.TrimPrefix(constants.MagicRootDir, "/"), prefix, basename)
@@ -218,9 +235,20 @@ func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename
 	var file fs.File
 	var err error
 	if strings.HasSuffix(filename, fmt.Sprintf(".%s", constants.ExtensionYAML)) {
-		file, err = mappings.Embedded.Open(filename)
+		if mappingsDir == "" {
+			file, err = mappings.Embedded.Open(filename)
+		} else {
+			newPath := filepath.Join(mappingsDir, basename)
+			file, err = os.Open(newPath)
+		}
 	} else {
-		file, err = helpers.Embedded.Open(filename)
+		// special case for "docker-credential-magic", always take from embedded
+		if helpersDir == "" || basename == "docker-credential-magic" {
+			file, err = helpers.Embedded.Open(filename)
+		} else {
+			newPath := filepath.Join(helpersDir, basename)
+			file, err = os.Open(newPath)
+		}
 	}
 	if err != nil {
 		return "", fmt.Errorf("opening embedded file %s: %v", filename, err)
@@ -325,14 +353,20 @@ func updateMagicMappings(logger *log.Logger, cf *v1.ConfigFile) {
 	cf.Config.Env = append(cf.Config.Env, constants.EnvVarDockerCredentialMagicConfig+"="+constants.MagicRootDir)
 }
 
-func getSupportedHelpers() ([]string, error) {
-	mappings, err := mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
+func getSupportedHelpers(mappingsDir string) ([]string, error) {
+	var entries []fs.DirEntry
+	var err error
+	if mappingsDir == "" {
+		entries, err = mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
+	} else {
+		entries, err = os.ReadDir(mappingsDir)
+	}
 	if err != nil {
 		return nil, err
 	}
 	var supportedHelpers []string
-	for _, mapping := range mappings {
-		filename := path.Base(mapping.Name())
+	for _, entry := range entries {
+		filename := path.Base(entry.Name())
 		slug := strings.TrimSuffix(filename, path.Ext(filename))
 		supportedHelpers = append(supportedHelpers, slug)
 	}
