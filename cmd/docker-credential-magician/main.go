@@ -47,7 +47,10 @@ func main() {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref := args[0]
-			var opts []magician.MutateOption
+			opts := []magician.MutateOption{
+				magician.MutateOptWithUserAgent(
+					fmt.Sprintf("docker-credential-magician/%s", Version)),
+			}
 			if tag := mutate.Tag; tag != "" {
 				opts = append(opts, magician.MutateOptWithTag(tag))
 			}

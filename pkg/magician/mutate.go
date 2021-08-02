@@ -31,14 +31,21 @@ type (
 	MutateOption func(*mutateOperation)
 
 	mutateOperation struct {
-		tag     string
-		helpers []string
+		tag       string
+		userAgent string
+		helpers   []string
 	}
 )
 
 func MutateOptWithTag(tag string) MutateOption {
 	return func(operation *mutateOperation) {
 		operation.tag = tag
+	}
+}
+
+func MutateOptWithUserAgent(userAgent string) MutateOption {
+	return func(operation *mutateOperation) {
+		operation.userAgent = userAgent
 	}
 }
 
@@ -176,6 +183,10 @@ func Mutate(src string, options ...MutateOption) error {
 
 	opts := []remote.Option{
 		remote.WithAuthFromKeychain(authn.DefaultKeychain),
+	}
+
+	if operation.userAgent != "" {
+		opts = append(opts, remote.WithUserAgent(operation.userAgent))
 	}
 
 	err = remote.Write(dst, img, opts...)
