@@ -212,6 +212,10 @@ can be found in the following GitHub conversations:
 - [google/ko/issues/3#issuecomment-749695477](https://github.com/google/ko/issues/3#issuecomment-749695477)
 - [google/go-containerregistry/issues/1059#issuecomment-867136469](https://github.com/google/go-containerregistry/issues/1059#issuecomment-867136469)
 
+If you are interested in understanding how Docker credential helpers work,
+you may enjoy
+[this image](https://raw.githubusercontent.com/google/go-containerregistry/main/images/credhelper-basic.svg).
+
 ## Contributing
 
 Contributions are welcome!
