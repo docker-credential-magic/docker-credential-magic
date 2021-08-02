@@ -11,7 +11,8 @@
     - [Local setup](#local-setup)
   - [How to use `docker-credential-magician`](#how-to-use-docker-credential-magician)
     - [Go library](#go-library)
-- [Adding support for a new helper](#adding-support-for-a-new-helper)
+- [Contributing](#contributing)
+  - [Adding support for a new helper](#adding-support-for-a-new-helper)
 
 ## Overview
 
@@ -202,7 +203,18 @@ rm -rf tmp/
 
 (If there is an easier way to approach this, please let us know)
 
-## Adding support for a new helper
+## Contributing
+
+Contributions are welcome!
+
+Prior to submitting a
+[pull request](https://github.com/docker-credential-magic/docker-credential-magic/pulls),
+please check the list of
+[open issues](https://github.com/docker-credential-magic/docker-credential-magic/issues).
+If there is not an existing issue related to your changes, please open a
+new issue to first discuss your thoughts with the project maintainers.
+
+### Adding support for a new helper
 
 If you are contributing support for another helper, here are the necessary steps:
 
