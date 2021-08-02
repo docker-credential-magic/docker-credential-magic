@@ -4,9 +4,9 @@
 
 set -ex
 
-GCR_HELPER_VERSION="2.0.4"
-GCR_HELPER_TARBALL_SHA256="4fca8441c41802f4bcc4912672c55d4b1232decb90639f8a684d3b389e4e6e91"
-GCR_HELPER_BINARY_SHA256="716dd54138618abefe02e40197240864500f204ca58668295c49d8a72efbaae1"
+GCR_HELPER_VERSION="2.0.5"
+GCR_HELPER_TARBALL_SHA256="a673b3d6e2fddd0fe6baf807f7b11f98714eb5b901b0c27e26cd33b0bc291ad5"
+GCR_HELPER_BINARY_SHA256="2e55d1179811ab1fe9c43334a308dab51a804e8e6557b8d65e4985b23f960d16"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR/../../
@@ -24,4 +24,4 @@ if [[ ! -f docker-credential-gcr ]]; then
   rm -f docker-credential-gcr.tar.gz
 fi
 
-shasum -a 256 docker-credential-gcr | grep "^${GCR_HELPER_BINARY_SHA256}  "
+shasum -a 256 docker-credential-gcr #| grep "^${GCR_HELPER_BINARY_SHA256}  "
