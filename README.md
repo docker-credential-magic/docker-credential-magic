@@ -10,6 +10,7 @@
   - [`docker-credential-magic`](#docker-credential-magic)
       - [Local setup](#local-setup)
   - [`docker-credential-magician`](#docker-credential-magician)
+    - [Go library](#go-library)
 
 ## Overview
 
@@ -151,3 +152,50 @@ DOCKER_CREDENTIAL_MAGIC_CONFIG=/opt/magic
 DOCKER_CONFIG=/opt/magic
 {"credsStore":"magic"}
 ```
+
+#### Go library
+
+You may wish to make use of `magician` functionality in your Go application.
+
+Here is a Go example which mimics the command-line example found above:
+
+```go
+package main
+
+import (
+	"github.com/docker-credential-magic/docker-credential-magic/pkg/magician"
+)
+
+func main() {
+    src := "gcr.io/projectsigstore/cosign/ci/cosign:v0.5.0"
+    dst := "localhost:5000/cosign:v0.5.0-magic"
+
+    err := magician.Mutate(src, magician.MutateOptWithTag(dst))
+    if err != nil {
+        panic(err)
+    }
+}
+```
+
+Note: since `magician` makes use of embedded files (helper binaries and mappings), if you try
+running this example, you will see errors such as the following:
+
+```
+pattern embedded/*: no matching files found
+```
+
+To fix this, you must manually populate the embedded directories in your `GOPATH`:
+
+```
+git clone https://github.com/docker-credential-magic/docker-credential-magic.git tmp/
+pushd tmp/
+make clean vendor fetch-helpers copy-mappings build-magic-embedded
+popd
+for d in $(find "$(go env | grep GOPATH | awk -F "=" '{print $2}' | tr -d '"')/pkg/mod/github.com/docker-credential-magic" -mindepth 1 -maxdepth 1 -type d); do
+  sudo cp -r tmp/internal/embedded/helpers/embedded "${d}/internal/embedded/helpers" || true
+  sudo cp -r tmp/internal/embedded/mappings/embedded "${d}/internal/embedded/mappings" || true
+done
+rm -rf tmp/
+```
+
+(If there is an easier way to approach this, please let us know)
