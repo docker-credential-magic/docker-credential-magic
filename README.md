@@ -83,7 +83,7 @@ Creating mapping file '/Users/me/Library/Application Support/magic/etc/gcp.yml' 
 ```
 
 If you wish to make `magic` the default credential helper, manually modify
-the `credStore` field in `$HOME/.docker/config.json`:
+the `credsStore` field in `$HOME/.docker/config.json`:
 
 ```javascript
 {
