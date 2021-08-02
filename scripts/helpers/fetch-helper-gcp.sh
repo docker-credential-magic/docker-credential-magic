@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Find new releases at https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases
+
 set -ex
 
 GCR_HELPER_VERSION="2.0.4"

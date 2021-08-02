@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Find new releases at https://github.com/awslabs/amazon-ecr-credential-helper/releases
+
 set -ex
 
 ECR_HELPER_VERSION="0.5.0"

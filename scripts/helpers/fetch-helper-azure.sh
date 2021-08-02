@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Find new releases at https://github.com/chrismellard/docker-credential-acr-env/releases
+
 set -ex
 
 ACR_HELPER_VERSION="0.6.0"
