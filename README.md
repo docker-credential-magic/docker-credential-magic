@@ -22,9 +22,9 @@ This repo contains the source for two separate tools:
 
 The following third-party Docker credential helpers are currently supported:
 
-- [`acr-env`](https://github.com/chrismellard/docker-credential-acr-env) - for Azure Container Registry (ACR)
-- [`ecr-login`](https://github.com/awslabs/amazon-ecr-credential-helper) - for Amazon Elastic Container Registry (ECR)
-- [`gcr`](https://github.com/GoogleCloudPlatform/docker-credential-gcr) - for Google Container Registry (GCR),
+- **azure** (via [`docker-credential-acr-env`](https://github.com/chrismellard/docker-credential-acr-env)) - for Azure Container Registry (ACR)
+- **aws** (via [`docker-credential-ecr-login`](https://github.com/awslabs/amazon-ecr-credential-helper)) - for Amazon Elastic Container Registry (ECR)
+- **gcp** (via [`docker-credential-gcr`](https://github.com/GoogleCloudPlatform/docker-credential-gcr)) - for Google Container Registry (GCR),
   Google Artifact Registry (GAR)
 
 ## Installation
