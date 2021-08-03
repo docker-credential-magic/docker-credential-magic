@@ -12,7 +12,7 @@ PY_REQUIRES="robotframework==4.1"
 export REMOTE_IMAGE="${REMOTE_IMAGE:-ghcr.io/oras-project/oras:v0.12.0@sha256:c17f028ecbe9caed88a352d590fbe58abef4b91baf9157e353f7ab7b60cd6fdb}"
 export CONTAINER_NAME="${CONTAINER_NAME:-docker-credential-magic-acceptance}"
 export CONTAINER_PORT="${CONTAINER_PORT:-5000}"
-export LOCAL_IMAGE="${LOCAL_IMAGE:-localhost:${CONTAINER_PORT}/acceptance:magic}"
+export LOCAL_IMAGE="${LOCAL_IMAGE:-localhost:${CONTAINER_PORT}/acceptance:magic2}"
 export PUSH_ENTRYPOINT="${PUSH_ENTRYPOINT:-sh}"
 export PUSH_MOUNT_FLAGS="${PUSH_MOUNT_FLAGS:--v ${PWD}/testdata/helm/nginx-9.3.6.tgz:/workspace/nginx-9.3.6.tgz}"
 export PUSH_ARGS="${PUSH_ARGS:--c 'echo "{}" > config.json && \

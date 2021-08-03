@@ -378,6 +378,7 @@ func mutateUtilWriteEmbeddedFileToTar(embeddedFilename string, tarFilename strin
 		// special case for "docker-credential-magic", always take from embedded
 		if helpersDir == "" || basename == fmt.Sprintf("%s-%s",
 			constants.DockerCredentialPrefix, constants.MagicCredentialSuffix) {
+			fmt.Println("HERE 1")
 			file, err = helpers.Embedded.Open(embeddedFilename)
 		} else {
 			newPath := filepath.Join(helpersDir, basename)
