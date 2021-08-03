@@ -136,8 +136,8 @@ func Mutate(src string, options ...MutateOption) error {
 		mutateStepPullBaseImage,
 
 		// Build new image with helpers, mappings, env vars, etc.
-		// TODO: break this step into multiple?
-		mutateStepBuildNewImage,
+		mutateStepNewImageAppendLayer,
+		mutateStepNewImageUpdateConfig,
 
 		// Push the new image to remote
 		mutateStepPushNewImage,
@@ -228,7 +228,7 @@ func mutateStepPullBaseImage(operation *mutateOperation) error {
 	return nil
 }
 
-func mutateStepBuildNewImage(operation *mutateOperation) error {
+func mutateStepNewImageAppendLayer(operation *mutateOperation) error {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 	var helperNames []string
@@ -276,19 +276,33 @@ func mutateStepBuildNewImage(operation *mutateOperation) error {
 	if err != nil {
 		return fmt.Errorf("append layers: %v", err)
 	}
-	cfg, err := img.ConfigFile()
+	operation.runtime.newImage = img
+	return nil
+}
+
+func mutateStepNewImageUpdateConfig(operation *mutateOperation) error {
+	cfg, err := operation.runtime.newImage.ConfigFile()
 	if err != nil {
 		return fmt.Errorf("load image config: %v", err)
 	}
 	cfg = cfg.DeepCopy()
-	updatePath(operation.runtime.logger, cfg)
-	updateDockerConfig(operation.runtime.logger, cfg)
-	updateMagicMappings(operation.runtime.logger, cfg)
-	img, err = mutate.ConfigFile(img, cfg)
+	newPath := fmt.Sprintf("%s/%s", constants.MagicRootDir, constants.BinariesSubdir)
+	operation.runtime.logger.Printf("Prepending %s with %s ...\n", constants.EnvVarPath, newPath)
+	_, existingPath := mutateGetImageConfigEnvVar(cfg, constants.EnvVarPath)
+	if existingPath != "" {
+		newPath = fmt.Sprintf("%s:%s", newPath, existingPath)
+	}
+	mutateSetImageConfigEnvVar(cfg, constants.EnvVarPath, newPath)
+	operation.runtime.logger.Printf("Setting %s to %s ...\n",
+		constants.EnvVarDockerConfig, constants.MagicRootDir)
+	mutateSetImageConfigEnvVar(cfg, constants.EnvVarDockerConfig, constants.MagicRootDir)
+	operation.runtime.logger.Printf("Setting %s to %s ...\n",
+		constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
+	mutateSetImageConfigEnvVar(cfg, constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
+	operation.runtime.newImage, err = mutate.ConfigFile(operation.runtime.newImage, cfg)
 	if err != nil {
 		return fmt.Errorf("mutate config file: %v", err)
 	}
-	operation.runtime.newImage = img
 	return nil
 }
 
@@ -382,56 +396,27 @@ func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename
 	return helper, nil
 }
 
-// Adapted from https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
-func updatePath(logger *log.Logger, cf *v1.ConfigFile) {
-	newPath := fmt.Sprintf("%s/%s", constants.MagicRootDir, constants.BinariesSubdir)
-
-	logger.Printf("Prepending %s with %s ...\n", constants.EnvVarPath, newPath)
-
+// Adapted from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
+func mutateGetImageConfigEnvVar(cf *v1.ConfigFile, key string) (int, string) {
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			// Expect environment variables to be in the form KEY=VALUE, so this is unexpected.
 			continue
 		}
-		key, value := parts[0], parts[1]
-		if key == constants.EnvVarPath {
-			value = fmt.Sprintf("%s:%s", newPath, value)
-			cf.Config.Env[i] = constants.EnvVarPath + "=" + value
-			return
+		k, v := parts[0], parts[1]
+		if k == key {
+			return i, v
 		}
 	}
-
-	// If we get here, we never saw PATH.
-	cf.Config.Env = append(cf.Config.Env, constants.EnvVarPath+"="+newPath)
+	return -1, ""
 }
 
-func updateDockerConfig(logger *log.Logger, cf *v1.ConfigFile) {
-	logger.Printf("Setting %s to %s ...\n", constants.EnvVarDockerConfig, constants.MagicRootDir)
-	for i, env := range cf.Config.Env {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := parts[0]
-		if key == constants.EnvVarDockerConfig {
-			cf.Config.Env[i] = constants.EnvVarDockerConfig + "=" + constants.MagicRootDir
-		}
+func mutateSetImageConfigEnvVar(cf *v1.ConfigFile, key string, val string) {
+	i, _ := mutateGetImageConfigEnvVar(cf, key)
+	if i >= 0 {
+		cf.Config.Env[i] = fmt.Sprintf("%s=%s", key, val)
+	} else {
+		cf.Config.Env = append(cf.Config.Env, fmt.Sprintf("%s=%s", key, val))
 	}
-	cf.Config.Env = append(cf.Config.Env, constants.EnvVarDockerConfig+"="+constants.MagicRootDir)
-}
-
-func updateMagicMappings(logger *log.Logger, cf *v1.ConfigFile) {
-	logger.Printf("Setting %s to %s ...\n", constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
-	for i, env := range cf.Config.Env {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := parts[0]
-		if key == constants.EnvVarDockerCredentialMagicConfig {
-			cf.Config.Env[i] = constants.EnvVarDockerCredentialMagicConfig + "=" + constants.MagicRootDir
-		}
-	}
-	cf.Config.Env = append(cf.Config.Env, constants.EnvVarDockerCredentialMagicConfig+"="+constants.MagicRootDir)
 }
