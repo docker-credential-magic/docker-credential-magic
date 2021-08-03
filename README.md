@@ -77,7 +77,8 @@ This is equivalent to the following on each operating system:
 - Windows: `%APPDATA%\magic\etc`
 
 `magic` has a useful subcommand, `init`, which will auto-create this directory
-and populate it with the default mappings files:
+and populate it with the default mappings files, as well as a catch-all
+Docker `config.json` file:
 
 ```
 $ docker-credential-magic init
@@ -88,7 +89,8 @@ Creating mapping file '/Users/me/Library/Application Support/magic/etc/gcp.yml' 
 Creating magic config file '/Users/me/Library/Application Support/magic/config.json' ...
 ```
 
-Next, modify the `DOCKER_CONFIG` env var to point to the magic directory:
+`magic` has another subcommand, `home`, which you can use to
+modify the `DOCKER_CONFIG` env var to point to the magic directory:
 
 ```
 $ export DOCKER_CONFIG="$(docker-credential-magic home)"
