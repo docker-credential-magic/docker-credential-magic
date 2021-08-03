@@ -71,7 +71,7 @@ Mutate remote test image
     Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'ls -la /opt/magic/bin'
     Should pass   docker run --rm --entrypoint /opt/magic/bin/docker-credential-magic %{LOCAL_IMAGE} version || true
     Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'echo "example.com" | /opt/magic/bin/docker-credential-magic get' || true
-    Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'file /opt/magic/bin/docker-credential-magic'
+    Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'apk update && apk add file && file /opt/magic/bin/docker-credential-magic' || true
 
 Suite Setup
    Start local test registry
