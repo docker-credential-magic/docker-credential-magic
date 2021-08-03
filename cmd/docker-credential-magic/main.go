@@ -67,13 +67,13 @@ func subcommandGet() {
 	rawInput := scanner.Text()
 	domain, err := parseDomain(rawInput)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Printf("[magic] parsing raw input: %s\n", err.Error())
 		os.Exit(1)
 	}
 	helperExe, err := getHelperExecutable(domain)
 	if err != nil {
 		if err != errorHelperNotFound {
-			fmt.Println(err.Error())
+			fmt.Printf("[magic] getting helper executable for domain: %s\n", err.Error())
 			os.Exit(1)
 		}
 
@@ -99,11 +99,12 @@ func subcommandGet() {
 
 		cf, err := config.Load(fallback)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Printf("[magic] loading fallback config \"%s\": %s\n", fallback, err.Error())
 			os.Exit(1)
 		}
 		cfg, err := cf.GetAuthConfig(domain)
 		if err != nil {
+			fmt.Printf("[magic] get auth config for domain: %s\n", err.Error())
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
@@ -116,6 +117,7 @@ func subcommandGet() {
 		})
 		b, err := json.Marshal(&creds)
 		if err != nil {
+			fmt.Printf("[magic] converting creds to json: %s\n", err.Error())
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
@@ -129,7 +131,7 @@ func subcommandGet() {
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Printf("[magic] exec \"%s\": %s\n", helperExe, err.Error())
 		os.Exit(1)
 	}
 	os.Exit(0)
