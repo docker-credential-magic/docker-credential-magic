@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -13,9 +12,6 @@ import (
 	"strings"
 
 	"github.com/adrg/xdg"
-	"github.com/docker/cli/cli/config"
-	"github.com/docker/docker/pkg/homedir"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"gopkg.in/yaml.v2"
 
 	"github.com/docker-credential-magic/docker-credential-magic/internal/constants"
@@ -67,71 +63,25 @@ func subcommandGet() {
 	rawInput := scanner.Text()
 	domain, err := parseDomain(rawInput)
 	if err != nil {
-		fmt.Printf("[magic] parsing raw input: %s\n", err.Error())
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 	helperExe, err := getHelperExecutable(domain)
 	if err != nil {
-		if err != errorHelperNotFound {
-			fmt.Printf("[magic] getting helper executable for domain: %s\n", err.Error())
-			os.Exit(1)
-		}
-
-		var fallback string
-
-		// If DOCKER_ORIG_CONFIG set, fallback to that
-		if orig := os.Getenv(constants.EnvVarDockerOrigConfig); orig != "" {
-			fallback = orig
-		} else {
-			// If ~/.docker/config.json exists, fallback to that
-			dockerHomeDir := filepath.Join(homedir.Get(), constants.DockerHomeDir)
-			dockerConfigFile := filepath.Join(dockerHomeDir, constants.DockerConfigFileBasename)
-			if _, err := os.Stat(dockerConfigFile); err == nil {
-				fallback = dockerHomeDir
-			}
-		}
-
-		if fallback == "" {
-			// If no match and no fallback, send the anonymous token response
+		if err == errorHelperNotFound {
 			fmt.Print(constants.AnonymousTokenResponse)
 			os.Exit(0)
 		}
-
-		cf, err := config.Load(fallback)
-		if err != nil {
-			fmt.Printf("[magic] loading fallback config \"%s\": %s\n", fallback, err.Error())
-			os.Exit(1)
-		}
-		cfg, err := cf.GetAuthConfig(domain)
-		if err != nil {
-			fmt.Printf("[magic] get auth config for domain: %s\n", err.Error())
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		creds := toCreds(&authn.AuthConfig{
-			Username:      cfg.Username,
-			Password:      cfg.Password,
-			Auth:          cfg.Auth,
-			IdentityToken: cfg.IdentityToken,
-			RegistryToken: cfg.RegistryToken,
-		})
-		b, err := json.Marshal(&creds)
-		if err != nil {
-			fmt.Printf("[magic] converting creds to json: %s\n", err.Error())
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		fmt.Println(string(b))
-		os.Exit(0)
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-
 	cmd := exec.Command(helperExe, constants.HelperSubcommandGet)
 	cmd.Stdin = strings.NewReader(rawInput)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
-		fmt.Printf("[magic] exec \"%s\": %s\n", helperExe, err.Error())
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 	os.Exit(0)
@@ -247,7 +197,7 @@ func getHelperExecutable(domain string) (string, error) {
 		}
 		for _, d := range m.Domains {
 			if d == domain {
-				return fmt.Sprintf("%s-%s", constants.DockerCredentialPrefix, m.Helper), nil
+				return fmt.Sprintf("docker-credential-%s", m.Helper), nil
 			}
 		}
 	}
@@ -259,26 +209,4 @@ func getDockerCredentialMagicConfig() string {
 		return d
 	}
 	return filepath.Join(xdg.ConfigHome, constants.XDGConfigSubdir)
-}
-
-// Borrowed from:
-// https://github.com/google/go-containerregistry/blob/a0b9468898deb31e3eb35f97fa4f0d568e769296/cmd/crane/cmd/auth.go#L47
-type credentials struct {
-	Username string
-	Secret   string
-}
-
-// Borrowed from:
-// https://github.com/google/go-containerregistry/blob/a0b9468898deb31e3eb35f97fa4f0d568e769296/cmd/crane/cmd/auth.go#L53
-func toCreds(config *authn.AuthConfig) credentials {
-	creds := credentials{
-		Username: config.Username,
-		Secret:   config.Password,
-	}
-
-	if config.IdentityToken != "" {
-		creds.Username = "<token>"
-		creds.Secret = config.IdentityToken
-	}
-	return creds
 }
