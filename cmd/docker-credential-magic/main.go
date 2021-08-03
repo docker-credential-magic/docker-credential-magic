@@ -45,8 +45,8 @@ func main() {
 	switch subcommand {
 	case constants.HelperSubcommandGet:
 		subcommandGet()
-	case "env":
-		subcommandEnv()
+	case "home":
+		subcommandHome()
 	case "init":
 		subcommandInit()
 	case "version":
@@ -56,7 +56,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Printf("Usage: docker-credential-magic <%s|env|init|version>\n",
+	fmt.Printf("Usage: docker-credential-magic <%s|home|init|version>\n",
 		constants.HelperSubcommandGet)
 	os.Exit(1)
 }
@@ -137,27 +137,25 @@ func subcommandGet() {
 	os.Exit(0)
 }
 
-func subcommandEnv() {
+func subcommandHome() {
 	dockerCredentialMagicConfig := getDockerCredentialMagicConfig()
-	fmt.Printf("%s=\"%s\"\n",
-		constants.EnvVarDockerCredentialMagicConfig,
-		dockerCredentialMagicConfig)
+	fmt.Println(dockerCredentialMagicConfig)
 	os.Exit(0)
 }
 
 func subcommandInit() {
 	dockerCredentialMagicConfig := getDockerCredentialMagicConfig()
-	parentDir := filepath.Join(dockerCredentialMagicConfig, constants.MappingsSubdir)
-	parentDirAbs, err := filepath.Abs(parentDir)
+	dockerCredentialMagicConfigDirAbs, err := filepath.Abs(dockerCredentialMagicConfig)
 	if err != nil {
 		fmt.Printf("Error: '%s' is not a valid directory\n", dockerCredentialMagicConfig)
 		os.Exit(1)
 	}
-	if info, err := os.Stat(parentDirAbs); err == nil && info.IsDir() {
-		fmt.Printf("Directory '%s' already exists. Skipping.\n", parentDirAbs)
+	parentDir := filepath.Join(dockerCredentialMagicConfigDirAbs, constants.MappingsSubdir)
+	if info, err := os.Stat(parentDir); err == nil && info.IsDir() {
+		fmt.Printf("Directory '%s' already exists. Skipping.\n", parentDir)
 	} else {
-		fmt.Printf("Creating directory '%s' ...\n", parentDirAbs)
-		if err := os.MkdirAll(parentDirAbs, 0755); err != nil {
+		fmt.Printf("Creating directory '%s' ...\n", parentDir)
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
 			fmt.Printf("Error creating directory: %s\n", err.Error())
 			os.Exit(1)
 		}
@@ -168,7 +166,7 @@ func subcommandInit() {
 		os.Exit(1)
 	}
 	for _, item := range items {
-		filename := filepath.Join(parentDirAbs, item.Name())
+		filename := filepath.Join(parentDir, item.Name())
 		if _, err := os.Stat(filename); err == nil {
 			fmt.Printf("File '%s' already exists. Skipping.\n", filename)
 			continue
@@ -188,6 +186,17 @@ func subcommandInit() {
 		}
 		if err = ioutil.WriteFile(filename, b, 0644); err != nil {
 			fmt.Printf("Error writing embedded file %s: %s\n", embeddedName, err.Error())
+			os.Exit(1)
+		}
+	}
+	magicConfig := filepath.Join(dockerCredentialMagicConfigDirAbs, constants.DockerConfigFileBasename)
+	if _, err := os.Stat(magicConfig); err == nil {
+		fmt.Printf("File '%s' already exists. Skipping.\n", magicConfig)
+	} else {
+		fmt.Printf("Creating magic config file '%s' ...\n", magicConfig)
+		err := ioutil.WriteFile(magicConfig, []byte(constants.DockerConfigFileContents), 0644)
+		if err != nil {
+			fmt.Printf("Error writing magic config file %s: %s\n", magicConfig, err.Error())
 			os.Exit(1)
 		}
 	}

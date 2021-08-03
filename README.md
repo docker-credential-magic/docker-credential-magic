@@ -85,18 +85,19 @@ Creating directory '/Users/me/Library/Application Support/magic/etc' ...
 Creating mapping file '/Users/me/Library/Application Support/magic/etc/aws.yml' ...
 Creating mapping file '/Users/me/Library/Application Support/magic/etc/azure.yml' ...
 Creating mapping file '/Users/me/Library/Application Support/magic/etc/gcp.yml' ...
+Creating magic config file '/Users/me/Library/Application Support/magic/config.json' ...
 ```
 
-If you wish to make `magic` the default credential helper, manually modify
-the `credsStore` field in `$HOME/.docker/config.json`:
+Next, modify the `DOCKER_CONFIG` env var to point to the magic directory:
 
-```javascript
-{
-  // ...
-  "credsStore": "magic",
-  // ...
-}
 ```
+$ export DOCKER_CONFIG="$(docker-credential-magic home)"
+```
+
+You may wish to add the previous command to your `~/.bashrc` / `~/.bash_profile`.
+
+If no matching domains are found, `magic` will fall back to use
+your existing `$HOME/.docker/config.json`.
 
 Note: At this time, `magic` will not automatically install the supported
 helpers on your machine. You should install each of these manually.
