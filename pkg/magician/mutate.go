@@ -206,7 +206,7 @@ func mutateStepSetRequestedHelpers(operation *mutateOperation) error {
 				}
 			}
 			if !isValid {
-				return fmt.Errorf("unspported helper: %s", slug)
+				return fmt.Errorf("unsupported helper: %s", slug)
 			}
 			requestedHelpers = append(requestedHelpers, slugLower)
 		}
@@ -302,7 +302,7 @@ func mutateStepUpdateImageConfig(operation *mutateOperation) error {
 	// $DOCKER_ORIG_CONFIG
 	// (If an image already has $DOCKER_CONFIG, set this var so we can fallback on it)
 	_, existingDockerConfig := mutateUtilGetImageConfigEnvVar(cfg, constants.EnvVarDockerConfig)
-	if existingDockerConfig != "" {
+	if existingDockerConfig != "" && existingDockerConfig != constants.MagicRootDir {
 		operation.runtime.logger.Printf("Existing %s detected (%s), setting %s ...\n",
 			constants.EnvVarDockerConfig, existingDockerConfig, constants.EnvVarDockerOrigConfig)
 		mutateUtilSetImageConfigEnvVar(cfg, constants.EnvVarDockerOrigConfig, existingDockerConfig)
