@@ -1,6 +1,7 @@
 # docker-credential-magic
 
 [![GitHub Actions status](https://github.com/docker-credential-magic/docker-credential-magic/workflows/build/badge.svg)](https://github.com/docker-credential-magic/docker-credential-magic/actions?query=workflow%3Abuild+)
+[![GoDoc](https://godoc.org/github.com/docker-credential-magic/docker-credential-magic?status.svg)](https://godoc.org/github.com/docker-credential-magic/docker-credential-magic)
 
 ![docker-credential-magic](./docker-credential-magic.png)
 
