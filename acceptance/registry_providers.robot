@@ -67,6 +67,8 @@ Stop local test registry
 
 Mutate remote test image
     Should pass   docker-credential-magician mutate %{REMOTE_IMAGE} -t %{LOCAL_IMAGE}
+    Should pass   docker pull %{LOCAL_IMAGE}
+    Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'ls -la /opt/magic/bin'
 
 Suite Setup
    Start local test registry
