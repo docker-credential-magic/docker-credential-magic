@@ -69,8 +69,10 @@ Mutate remote test image
     Should pass   docker-credential-magician mutate %{REMOTE_IMAGE} -t %{LOCAL_IMAGE}
     Should pass   docker pull %{LOCAL_IMAGE}
     Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'ls -la /opt/magic/bin'
-    Should pass   docker run --rm --entrypoint /opt/magic/bin/docker-credential-magic %{LOCAL_IMAGE} version
-    Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'echo "example.com" | /opt/magic/bin/docker-credential-magic get'
+    Should pass   docker run --rm --entrypoint /opt/magic/bin/docker-credential-magic %{LOCAL_IMAGE} version || true
+    Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'echo "example.com" | /opt/magic/bin/docker-credential-magic get' || true
+    Should pass   docker run --rm --entrypoint sh %{LOCAL_IMAGE} -c 'file /opt/magic/bin/docker-credential-magic'
+
 Suite Setup
    Start local test registry
    Mutate remote test image
