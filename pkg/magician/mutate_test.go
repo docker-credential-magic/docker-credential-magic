@@ -241,10 +241,24 @@ func (suite *MutateTestSuite) Test_3_CustomHelpersAndMappings() {
 
 	// Valid
 	err = Mutate(ref.String(),
-		MutateOptWithMappingsDir("../../testdata/mappings"),
+		MutateOptWithMappingsDir("../../testdata/mappings/valid"),
 		MutateOptWithHelpersDir("../../testdata/helpers"),
 		MutateOptWithIncludeHelpers([]string{"example"}))
-	suite.Nil(err, "test2 Mutate fails with custom dirs")
+	suite.Nil(err, "test2 Mutate fails with valid custom dirs")
+
+	// Invalid (missing fields)
+	err = Mutate(ref.String(),
+		MutateOptWithMappingsDir("../../testdata/mappings/invalid-missing-fields"),
+		MutateOptWithHelpersDir("../../testdata/helpers"),
+		MutateOptWithIncludeHelpers([]string{"example"}))
+	suite.NotNil(err, "test2 Mutate does not fails with invalid custom dirs (missing fields)")
+
+	// Invalid (bad yaml)
+	err = Mutate(ref.String(),
+		MutateOptWithMappingsDir("../../testdata/mappings/invalid-bad-yaml"),
+		MutateOptWithHelpersDir("../../testdata/helpers"),
+		MutateOptWithIncludeHelpers([]string{"example"}))
+	suite.NotNil(err, "test2 Mutate does not fails with invalid custom dirs (bad yaml)")
 }
 
 func (suite *MutateTestSuite) Test_3_BadInput() {
