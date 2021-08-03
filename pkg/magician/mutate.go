@@ -231,36 +231,45 @@ func mutateStepPullBaseImage(operation *mutateOperation) error {
 func mutateStepAppendImageLayer(operation *mutateOperation) error {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
+
+	// Add the mappings files to tar, extracting the helper names as we go
 	var helperNames []string
 	for _, slug := range operation.runtime.requestedHelpers {
-		mappingsFilename := filepath.Join(constants.EmbeddedParentDir,
-			fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
-		helperName, err := writeEmbeddedFileToTarAtPrefix(operation.runtime.logger, tw,
-			mappingsFilename, operation.configurable.mappingsDir,
-			operation.configurable.helpersDir, constants.MappingsSubdir)
+		embeddedFilename, tarFilename := mutateGetMappingsFilenamesBySlug(slug)
+		operation.runtime.logger.Printf("Adding /%s ...\n", tarFilename)
+		helperName, err := mutateWriteEmbeddedFileToTar(embeddedFilename, tarFilename, tw, true,
+			operation.configurable.mappingsDir, operation.configurable.helpersDir)
 		if err != nil {
-			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
+			return fmt.Errorf("write mappings file %s to tar: %v", embeddedFilename, err)
 		}
 		helperNames = append(helperNames, helperName)
 	}
-	helperNames = append(helperNames, "magic")
+
+	// Add our magic helper to the list of helpers for the next step
+	helperNames = append(helperNames, constants.MagicCredentialSuffix)
+
+	// Add the helper binaries to tar
 	for _, helperName := range helperNames {
-		helperFilename := filepath.Join(constants.EmbeddedParentDir,
-			fmt.Sprintf("docker-credential-%s", helperName))
-		_, err := writeEmbeddedFileToTarAtPrefix(operation.runtime.logger, tw,
-			helperFilename, operation.configurable.mappingsDir,
-			operation.configurable.helpersDir, constants.BinariesSubdir)
+		embeddedFilename, tarFilename := mutateGetHelperFilenamesByName(helperName)
+		operation.runtime.logger.Printf("Adding /%s ...\n", tarFilename)
+		_, err := mutateWriteEmbeddedFileToTar(embeddedFilename, tarFilename, tw, false,
+			operation.configurable.mappingsDir, operation.configurable.helpersDir)
 		if err != nil {
-			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
+			return fmt.Errorf("write helper file %s to tar: %v", embeddedFilename, err)
 		}
 	}
-	name := fmt.Sprintf("%s/%s", strings.TrimPrefix(constants.MagicRootDir, "/"), constants.DockerConfigFileBasename)
+
+	// Add our custom Docker config.json to tar
+	name := fmt.Sprintf("%s/%s", strings.TrimPrefix(constants.MagicRootDir, "/"),
+		constants.DockerConfigFileBasename)
 	operation.runtime.logger.Printf("Adding /%s ...\n", name)
-	err := fileToTar(name, int64(len(constants.DockerConfigFileContents)),
+	err := mutateWriteFileToTar(name, int64(len(constants.DockerConfigFileContents)),
 		strings.NewReader(constants.DockerConfigFileContents), tw)
 	if err != nil {
 		return err
 	}
+
+	// Create and append new layer from tarball
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
 		return fmt.Errorf("layer from reader: %v", err)
@@ -270,6 +279,7 @@ func mutateStepAppendImageLayer(operation *mutateOperation) error {
 		return fmt.Errorf("append layers: %v", err)
 	}
 	operation.runtime.newImage = img
+
 	return nil
 }
 
@@ -322,48 +332,66 @@ func mutateStepPushNewImage(operation *mutateOperation) error {
 	return nil
 }
 
-// TODO: clean this up / break this up big time...
-func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename string,
-	mappingsDir string, helpersDir string, prefix string) (string, error) {
-	basename := path.Base(filename)
+func mutateGetMappingsFilenamesBySlug(slug string) (string, string) {
+	embeddedFilename := filepath.Join(constants.EmbeddedParentDir,
+		fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
 	tarFilename := fmt.Sprintf("%s/%s/%s",
-		strings.TrimPrefix(constants.MagicRootDir, "/"), prefix, basename)
-	logger.Printf("Adding /%s ...\n", tarFilename)
+		strings.TrimPrefix(constants.MagicRootDir, "/"),
+		constants.BinariesSubdir, path.Base(embeddedFilename))
+	return embeddedFilename, tarFilename
+}
+
+func mutateGetHelperFilenamesByName(name string) (string, string) {
+	embeddedFilename := filepath.Join(constants.EmbeddedParentDir,
+		fmt.Sprintf("%s-%s", constants.DockerCredentialPrefix, name))
+	tarFilename := fmt.Sprintf("%s/%s/%s",
+		strings.TrimPrefix(constants.MagicRootDir, "/"),
+		constants.BinariesSubdir, path.Base(embeddedFilename))
+	return embeddedFilename, tarFilename
+}
+
+// Grab embedded file by path "embeddedFilename" and add to the tar at "tarFilename".
+// If "mappingsDir" / "helpersDir" is provided, grab it from there instead.
+// If "isMapping" is true, then assume mappings file and attempt to extract helper name.
+func mutateWriteEmbeddedFileToTar(embeddedFilename string, tarFilename string,
+	tw *tar.Writer, isMapping bool, mappingsDir string, helpersDir string) (string, error) {
+	basename := path.Base(embeddedFilename)
 	var file fs.File
 	var err error
-	if strings.HasSuffix(filename, fmt.Sprintf(".%s", constants.ExtensionYAML)) {
+	if isMapping {
 		if mappingsDir == "" {
-			file, err = mappings.Embedded.Open(filename)
+			file, err = mappings.Embedded.Open(embeddedFilename)
 		} else {
 			newPath := filepath.Join(mappingsDir, basename)
 			file, err = os.Open(newPath)
 		}
 	} else {
 		// special case for "docker-credential-magic", always take from embedded
-		if helpersDir == "" || basename == "docker-credential-magic" {
-			file, err = helpers.Embedded.Open(filename)
+		if helpersDir == "" || basename == fmt.Sprintf("%s-%s",
+			constants.DockerCredentialPrefix, constants.MagicCredentialSuffix) {
+			file, err = helpers.Embedded.Open(embeddedFilename)
 		} else {
 			newPath := filepath.Join(helpersDir, basename)
 			file, err = os.Open(newPath)
 		}
 	}
 	if err != nil {
-		return "", fmt.Errorf("opening embedded file %s: %v", filename, err)
+		return "", fmt.Errorf("opening embedded file %s: %v", basename, err)
 	}
 	defer file.Close()
 
 	b, err := ioutil.ReadAll(file)
 	if err != nil {
-		return "", fmt.Errorf("reader readall file %s: %v", filename, err)
+		return "", fmt.Errorf("reader readall file %s: %v", basename, err)
 	}
 
 	// In the case of the mappings files, extract the helper name
 	var helper string
-	if strings.HasSuffix(basename, fmt.Sprintf(".%s", constants.ExtensionYAML)) {
+	if isMapping {
 		var m types.HelperMapping
 		err = yaml.Unmarshal(b, &m)
 		if err != nil {
-			return "", fmt.Errorf("parsing mappings for %s: %v", filename, err)
+			return "", fmt.Errorf("parsing mappings for %s: %v", basename, err)
 		}
 		helper = m.Helper
 	}
@@ -371,17 +399,17 @@ func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename
 	// Copy file into the tar
 	info, err := file.Stat()
 	if err != nil {
-		return "", fmt.Errorf("stat file %s: %v", filename, err)
+		return "", fmt.Errorf("stat file %s: %v", basename, err)
 	}
 	size := info.Size()
-	if err := fileToTar(filename, size, bytes.NewBuffer(b), tw); err != nil {
+	if err := mutateWriteFileToTar(tarFilename, size, bytes.NewBuffer(b), tw); err != nil {
 		return "", err
 	}
 
 	return helper, nil
 }
 
-func fileToTar(filename string, size int64, reader io.Reader, tw *tar.Writer) error {
+func mutateWriteFileToTar(filename string, size int64, reader io.Reader, tw *tar.Writer) error {
 	creationTime := v1.Time{}
 	header := &tar.Header{
 		Name:     filename,

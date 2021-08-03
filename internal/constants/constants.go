@@ -3,6 +3,7 @@ package constants
 const (
 	AnonymousTokenResponse            = "{\"Username\":\"\",\"Secret\":\"\"}\n"
 	BinariesSubdir                    = "bin"
+	DockerCredentialPrefix            = "docker-credential"
 	DockerConfigFileBasename          = "config.json"
 	DockerConfigFileContents          = "{\"credsStore\":\"magic\"}\n"
 	EmbeddedParentDir                 = "embedded"
@@ -11,6 +12,7 @@ const (
 	EnvVarPath                        = "PATH"
 	ExtensionYAML                     = "yml"
 	HelperSubcommandGet               = "get"
+	MagicCredentialSuffix             = "magic"
 	MagicRootDir                      = "/opt/magic"
 	MappingsSubdir                    = "etc"
 	XDGConfigSubdir                   = "magic"
