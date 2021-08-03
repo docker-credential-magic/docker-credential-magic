@@ -299,6 +299,15 @@ func mutateStepUpdateImageConfig(operation *mutateOperation) error {
 	}
 	mutateUtilSetImageConfigEnvVar(cfg, constants.EnvVarPath, newPath)
 
+	// $DOCKER_ORIG_CONFIG
+	// (If an image already has $DOCKER_CONFIG, set this var so we can fallback on it)
+	_, existingDockerConfig := mutateUtilGetImageConfigEnvVar(cfg, constants.EnvVarDockerConfig)
+	if existingDockerConfig != "" {
+		operation.runtime.logger.Printf("Existing %s detected (%s), setting %s ...\n",
+			constants.EnvVarDockerConfig, existingDockerConfig, constants.EnvVarDockerOrigConfig)
+		mutateUtilSetImageConfigEnvVar(cfg, constants.EnvVarDockerOrigConfig, existingDockerConfig)
+	}
+
 	// $DOCKER_CONFIG
 	operation.runtime.logger.Printf("Setting %s to %s ...\n",
 		constants.EnvVarDockerConfig, constants.MagicRootDir)
