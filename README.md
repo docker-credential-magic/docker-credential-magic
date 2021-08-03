@@ -80,7 +80,7 @@ This is equivalent to the following on each operating system:
 
 `magic` has a useful subcommand, `init`, which will auto-create this directory
 and populate it with the default mappings files, as well as a catch-all
-Docker `config.json` file:
+Docker `config.json` file in the parent directory:
 
 ```
 $ docker-credential-magic init
