@@ -235,9 +235,9 @@ func mutateStepAppendImageLayer(operation *mutateOperation) error {
 	// Add the mappings files to tar, extracting the helper names as we go
 	var helperNames []string
 	for _, slug := range operation.runtime.requestedHelpers {
-		embeddedFilename, tarFilename := mutateGetMappingsFilenamesBySlug(slug)
+		embeddedFilename, tarFilename := mutateUtilGetMappingsFilenamesBySlug(slug)
 		operation.runtime.logger.Printf("Adding /%s ...\n", tarFilename)
-		helperName, err := mutateWriteEmbeddedFileToTar(embeddedFilename, tarFilename, tw, true,
+		helperName, err := mutateUtilWriteEmbeddedFileToTar(embeddedFilename, tarFilename, tw, true,
 			operation.configurable.mappingsDir, operation.configurable.helpersDir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", embeddedFilename, err)
@@ -250,9 +250,9 @@ func mutateStepAppendImageLayer(operation *mutateOperation) error {
 
 	// Add the helper binaries to tar
 	for _, helperName := range helperNames {
-		embeddedFilename, tarFilename := mutateGetHelperFilenamesByName(helperName)
+		embeddedFilename, tarFilename := mutateUtilGetHelperFilenamesByName(helperName)
 		operation.runtime.logger.Printf("Adding /%s ...\n", tarFilename)
-		_, err := mutateWriteEmbeddedFileToTar(embeddedFilename, tarFilename, tw, false,
+		_, err := mutateUtilWriteEmbeddedFileToTar(embeddedFilename, tarFilename, tw, false,
 			operation.configurable.mappingsDir, operation.configurable.helpersDir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", embeddedFilename, err)
@@ -263,7 +263,7 @@ func mutateStepAppendImageLayer(operation *mutateOperation) error {
 	name := fmt.Sprintf("%s/%s", strings.TrimPrefix(constants.MagicRootDir, "/"),
 		constants.DockerConfigFileBasename)
 	operation.runtime.logger.Printf("Adding /%s ...\n", name)
-	err := mutateWriteFileToTar(name, int64(len(constants.DockerConfigFileContents)),
+	err := mutateUtilWriteFileToTar(name, int64(len(constants.DockerConfigFileContents)),
 		strings.NewReader(constants.DockerConfigFileContents), tw)
 	if err != nil {
 		return err
@@ -293,21 +293,21 @@ func mutateStepUpdateImageConfig(operation *mutateOperation) error {
 	// $PATH
 	newPath := fmt.Sprintf("%s/%s", constants.MagicRootDir, constants.BinariesSubdir)
 	operation.runtime.logger.Printf("Prepending %s with %s ...\n", constants.EnvVarPath, newPath)
-	_, existingPath := mutateGetImageConfigEnvVar(cfg, constants.EnvVarPath)
+	_, existingPath := mutateUtilGetImageConfigEnvVar(cfg, constants.EnvVarPath)
 	if existingPath != "" {
 		newPath = fmt.Sprintf("%s:%s", newPath, existingPath)
 	}
-	mutateSetImageConfigEnvVar(cfg, constants.EnvVarPath, newPath)
+	mutateUtilSetImageConfigEnvVar(cfg, constants.EnvVarPath, newPath)
 
 	// $DOCKER_CONFIG
 	operation.runtime.logger.Printf("Setting %s to %s ...\n",
 		constants.EnvVarDockerConfig, constants.MagicRootDir)
-	mutateSetImageConfigEnvVar(cfg, constants.EnvVarDockerConfig, constants.MagicRootDir)
+	mutateUtilSetImageConfigEnvVar(cfg, constants.EnvVarDockerConfig, constants.MagicRootDir)
 
 	// $DOCKER_CREDENTIAL_MAGIC_CONFIG
 	operation.runtime.logger.Printf("Setting %s to %s ...\n",
 		constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
-	mutateSetImageConfigEnvVar(cfg, constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
+	mutateUtilSetImageConfigEnvVar(cfg, constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
 
 	operation.runtime.newImage, err = mutate.ConfigFile(operation.runtime.newImage, cfg)
 	if err != nil {
@@ -332,16 +332,16 @@ func mutateStepPushNewImage(operation *mutateOperation) error {
 	return nil
 }
 
-func mutateGetMappingsFilenamesBySlug(slug string) (string, string) {
+func mutateUtilGetMappingsFilenamesBySlug(slug string) (string, string) {
 	embeddedFilename := filepath.Join(constants.EmbeddedParentDir,
 		fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
 	tarFilename := fmt.Sprintf("%s/%s/%s",
 		strings.TrimPrefix(constants.MagicRootDir, "/"),
-		constants.BinariesSubdir, path.Base(embeddedFilename))
+		constants.MappingsSubdir, path.Base(embeddedFilename))
 	return embeddedFilename, tarFilename
 }
 
-func mutateGetHelperFilenamesByName(name string) (string, string) {
+func mutateUtilGetHelperFilenamesByName(name string) (string, string) {
 	embeddedFilename := filepath.Join(constants.EmbeddedParentDir,
 		fmt.Sprintf("%s-%s", constants.DockerCredentialPrefix, name))
 	tarFilename := fmt.Sprintf("%s/%s/%s",
@@ -353,7 +353,7 @@ func mutateGetHelperFilenamesByName(name string) (string, string) {
 // Grab embedded file by path "embeddedFilename" and add to the tar at "tarFilename".
 // If "mappingsDir" / "helpersDir" is provided, grab it from there instead.
 // If "isMapping" is true, then assume mappings file and attempt to extract helper name.
-func mutateWriteEmbeddedFileToTar(embeddedFilename string, tarFilename string,
+func mutateUtilWriteEmbeddedFileToTar(embeddedFilename string, tarFilename string,
 	tw *tar.Writer, isMapping bool, mappingsDir string, helpersDir string) (string, error) {
 	basename := path.Base(embeddedFilename)
 	var file fs.File
@@ -402,14 +402,14 @@ func mutateWriteEmbeddedFileToTar(embeddedFilename string, tarFilename string,
 		return "", fmt.Errorf("stat file %s: %v", basename, err)
 	}
 	size := info.Size()
-	if err := mutateWriteFileToTar(tarFilename, size, bytes.NewBuffer(b), tw); err != nil {
+	if err := mutateUtilWriteFileToTar(tarFilename, size, bytes.NewBuffer(b), tw); err != nil {
 		return "", err
 	}
 
 	return helper, nil
 }
 
-func mutateWriteFileToTar(filename string, size int64, reader io.Reader, tw *tar.Writer) error {
+func mutateUtilWriteFileToTar(filename string, size int64, reader io.Reader, tw *tar.Writer) error {
 	creationTime := v1.Time{}
 	header := &tar.Header{
 		Name:     filename,
@@ -433,7 +433,7 @@ func mutateWriteFileToTar(filename string, size int64, reader io.Reader, tw *tar
 }
 
 // Adapted from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
-func mutateGetImageConfigEnvVar(cf *v1.ConfigFile, key string) (int, string) {
+func mutateUtilGetImageConfigEnvVar(cf *v1.ConfigFile, key string) (int, string) {
 	for i, env := range cf.Config.Env {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
@@ -448,8 +448,8 @@ func mutateGetImageConfigEnvVar(cf *v1.ConfigFile, key string) (int, string) {
 	return -1, ""
 }
 
-func mutateSetImageConfigEnvVar(cf *v1.ConfigFile, key string, val string) {
-	i, _ := mutateGetImageConfigEnvVar(cf, key)
+func mutateUtilSetImageConfigEnvVar(cf *v1.ConfigFile, key string, val string) {
+	i, _ := mutateUtilGetImageConfigEnvVar(cf, key)
 	if i >= 0 {
 		cf.Config.Env[i] = fmt.Sprintf("%s=%s", key, val)
 	} else {
