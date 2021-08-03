@@ -23,22 +23,24 @@ vendor:
 
 .PHONY: build-magic
 build-magic:
-	go build -ldflags="-X main.Version=$(VERSION)" \
-		-o bin/docker-credential-magic \
-		.../cmd/docker-credential-magic
+	CGO_ENABLED=0 \
+		go build -ldflags="-X main.Version=$(VERSION)" \
+			-o bin/docker-credential-magic \
+			.../cmd/docker-credential-magic
 
 .PHONY: build-magic-embedded
 build-magic-embedded:
-	GOOS=linux GOARCH=amd64 \
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 		go build -ldflags="-X main.Version=$(VERSION)" \
 			-o internal/embedded/helpers/embedded/docker-credential-magic \
 			.../cmd/docker-credential-magic
 
 .PHONY: build-magician
 build-magician:
-	go build -ldflags="-X main.Version=$(VERSION)" \
-		-o bin/docker-credential-magician \
-		.../cmd/docker-credential-magician
+	CGO_ENABLED=0 \
+		go build -ldflags="-X main.Version=$(VERSION)" \
+			-o bin/docker-credential-magician \
+			.../cmd/docker-credential-magician
 
 .PHONY: test
 test:
