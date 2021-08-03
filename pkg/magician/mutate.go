@@ -50,9 +50,9 @@ type (
 	// The following fields are *not* configurable via options,
 	// and are used to pass data between mutate steps
 	mutateOperationRuntime struct {
-		src              string
+		source           string
 		logger           *log.Logger
-		dst              name.Reference
+		destination      name.Reference
 		supportedHelpers []string
 		requestedHelpers []string
 		baseImage        v1.Image
@@ -107,14 +107,14 @@ func MutateOptWithWriter(writer io.Writer) MutateOption {
 // Mutate takes a remote source image, builds a new image with various
 // Docker credential helpers baked-in, then pushes it back to the registry
 // (at the same reference unless otherwise specified with MutateOptWithTag).
-func Mutate(src string, options ...MutateOption) error {
+func Mutate(source string, options ...MutateOption) error {
 	// Create default operation object
 	operation := &mutateOperation{
 		configurable: &mutateOperationConfigurable{
 			writer: ioutil.Discard,
 		},
 		runtime: &mutateOperationRuntime{
-			src: src,
+			source: source,
 		},
 	}
 
@@ -128,7 +128,7 @@ func Mutate(src string, options ...MutateOption) error {
 
 		// Prepopulate various runtime fields on the operation
 		mutateStepSetLogger,
-		mutateStepSetDst,
+		mutateStepSetDestination,
 		mutateStepSetSupportedHelpers,
 		mutateStepSetRequestedHelpers,
 
@@ -136,8 +136,8 @@ func Mutate(src string, options ...MutateOption) error {
 		mutateStepPullBaseImage,
 
 		// Build new image with helpers, mappings, env vars, etc.
-		mutateStepNewImageAppendLayer,
-		mutateStepNewImageUpdateConfig,
+		mutateStepAppendImageLayer,
+		mutateStepUpdateImageConfig,
 
 		// Push the new image to remote
 		mutateStepPushNewImage,
@@ -158,16 +158,16 @@ func mutateStepSetLogger(operation *mutateOperation) error {
 	return nil
 }
 
-func mutateStepSetDst(operation *mutateOperation) error {
-	ref := operation.runtime.src
+func mutateStepSetDestination(operation *mutateOperation) error {
+	ref := operation.runtime.source
 	if operation.configurable.tag != "" {
 		ref = operation.configurable.tag
 	}
-	dst, err := name.ParseReference(ref)
+	destination, err := name.ParseReference(ref)
 	if err != nil {
 		return fmt.Errorf("parsing reference %q: %v", ref, err)
 	}
-	operation.runtime.dst = dst
+	operation.runtime.destination = destination
 	return nil
 }
 
@@ -219,16 +219,16 @@ func mutateStepSetRequestedHelpers(operation *mutateOperation) error {
 }
 
 func mutateStepPullBaseImage(operation *mutateOperation) error {
-	operation.runtime.logger.Printf("Pulling %s ...\n", operation.runtime.src)
-	baseImage, err := crane.Pull(operation.runtime.src)
+	operation.runtime.logger.Printf("Pulling %s ...\n", operation.runtime.source)
+	baseImage, err := crane.Pull(operation.runtime.source)
 	if err != nil {
-		return fmt.Errorf("pulling %q: %v", operation.runtime.src, err)
+		return fmt.Errorf("pulling %q: %v", operation.runtime.source, err)
 	}
 	operation.runtime.baseImage = baseImage
 	return nil
 }
 
-func mutateStepNewImageAppendLayer(operation *mutateOperation) error {
+func mutateStepAppendImageLayer(operation *mutateOperation) error {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 	var helperNames []string
@@ -236,7 +236,8 @@ func mutateStepNewImageAppendLayer(operation *mutateOperation) error {
 		mappingsFilename := filepath.Join(constants.EmbeddedParentDir,
 			fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
 		helperName, err := writeEmbeddedFileToTarAtPrefix(operation.runtime.logger, tw,
-			mappingsFilename, operation.configurable.mappingsDir, operation.configurable.helpersDir, constants.MappingsSubdir)
+			mappingsFilename, operation.configurable.mappingsDir,
+			operation.configurable.helpersDir, constants.MappingsSubdir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
 		}
@@ -247,26 +248,18 @@ func mutateStepNewImageAppendLayer(operation *mutateOperation) error {
 		helperFilename := filepath.Join(constants.EmbeddedParentDir,
 			fmt.Sprintf("docker-credential-%s", helperName))
 		_, err := writeEmbeddedFileToTarAtPrefix(operation.runtime.logger, tw,
-			helperFilename, operation.configurable.mappingsDir, operation.configurable.helpersDir, constants.BinariesSubdir)
+			helperFilename, operation.configurable.mappingsDir,
+			operation.configurable.helpersDir, constants.BinariesSubdir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
 		}
 	}
-	creationTime := v1.Time{}
 	name := fmt.Sprintf("%s/%s", strings.TrimPrefix(constants.MagicRootDir, "/"), constants.DockerConfigFileBasename)
 	operation.runtime.logger.Printf("Adding /%s ...\n", name)
-	header := &tar.Header{
-		Name:     name,
-		Size:     int64(len(constants.DockerConfigFileContents)),
-		Typeflag: tar.TypeReg,
-		Mode:     0555,
-		ModTime:  creationTime.Time,
-	}
-	if err := tw.WriteHeader(header); err != nil {
-		return fmt.Errorf("writing header of json file %q: %v", header, err)
-	}
-	if _, err := io.Copy(tw, strings.NewReader(constants.DockerConfigFileContents)); err != nil {
-		return fmt.Errorf("copy json file to tar: %v", err)
+	err := fileToTar(name, int64(len(constants.DockerConfigFileContents)),
+		strings.NewReader(constants.DockerConfigFileContents), tw)
+	if err != nil {
+		return err
 	}
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
@@ -280,12 +273,14 @@ func mutateStepNewImageAppendLayer(operation *mutateOperation) error {
 	return nil
 }
 
-func mutateStepNewImageUpdateConfig(operation *mutateOperation) error {
+func mutateStepUpdateImageConfig(operation *mutateOperation) error {
 	cfg, err := operation.runtime.newImage.ConfigFile()
 	if err != nil {
 		return fmt.Errorf("load image config: %v", err)
 	}
 	cfg = cfg.DeepCopy()
+
+	// $PATH
 	newPath := fmt.Sprintf("%s/%s", constants.MagicRootDir, constants.BinariesSubdir)
 	operation.runtime.logger.Printf("Prepending %s with %s ...\n", constants.EnvVarPath, newPath)
 	_, existingPath := mutateGetImageConfigEnvVar(cfg, constants.EnvVarPath)
@@ -293,12 +288,17 @@ func mutateStepNewImageUpdateConfig(operation *mutateOperation) error {
 		newPath = fmt.Sprintf("%s:%s", newPath, existingPath)
 	}
 	mutateSetImageConfigEnvVar(cfg, constants.EnvVarPath, newPath)
+
+	// $DOCKER_CONFIG
 	operation.runtime.logger.Printf("Setting %s to %s ...\n",
 		constants.EnvVarDockerConfig, constants.MagicRootDir)
 	mutateSetImageConfigEnvVar(cfg, constants.EnvVarDockerConfig, constants.MagicRootDir)
+
+	// $DOCKER_CREDENTIAL_MAGIC_CONFIG
 	operation.runtime.logger.Printf("Setting %s to %s ...\n",
 		constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
 	mutateSetImageConfigEnvVar(cfg, constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir)
+
 	operation.runtime.newImage, err = mutate.ConfigFile(operation.runtime.newImage, cfg)
 	if err != nil {
 		return fmt.Errorf("mutate config file: %v", err)
@@ -308,14 +308,14 @@ func mutateStepNewImageUpdateConfig(operation *mutateOperation) error {
 
 func mutateStepPushNewImage(operation *mutateOperation) error {
 	operation.runtime.logger.Printf("Pushing image to %s ...\n",
-		operation.runtime.dst.String())
+		operation.runtime.destination.String())
 	opts := []remote.Option{
 		remote.WithAuthFromKeychain(authn.DefaultKeychain),
 	}
 	if operation.configurable.userAgent != "" {
 		opts = append(opts, remote.WithUserAgent(operation.configurable.userAgent))
 	}
-	if err := remote.Write(operation.runtime.dst,
+	if err := remote.Write(operation.runtime.destination,
 		operation.runtime.newImage, opts...); err != nil {
 		return fmt.Errorf("remote write: %v", err)
 	}
@@ -369,31 +369,39 @@ func writeEmbeddedFileToTarAtPrefix(logger *log.Logger, tw *tar.Writer, filename
 	}
 
 	// Copy file into the tar
-	creationTime := v1.Time{}
 	info, err := file.Stat()
 	if err != nil {
 		return "", fmt.Errorf("stat file %s: %v", filename, err)
 	}
 	size := info.Size()
-	header := &tar.Header{
-		Name:     tarFilename,
-		Size:     size,
-		Typeflag: tar.TypeReg,
-		// Borrowed from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
-		// Use a fixed Mode, so that this isn't sensitive to the directory and umask
-		// under which it was created. Additionally, windows can only set 0222,
-		// 0444, or 0666, none of which are executable.
-		Mode:    0555,
-		ModTime: creationTime.Time,
-	}
-	if err := tw.WriteHeader(header); err != nil {
-		return "", fmt.Errorf("writing header %q: %v", header, err)
-	}
-	if _, err := io.Copy(tw, bytes.NewBuffer(b)); err != nil {
-		return "", fmt.Errorf("copy to tar %q: %v", file, err)
+	if err := fileToTar(filename, size, bytes.NewBuffer(b), tw); err != nil {
+		return "", err
 	}
 
 	return helper, nil
+}
+
+func fileToTar(filename string, size int64, reader io.Reader, tw *tar.Writer) error {
+	creationTime := v1.Time{}
+	header := &tar.Header{
+		Name:     filename,
+		Size:     size,
+		Typeflag: tar.TypeReg,
+		// Borrowed from:
+		// https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L477
+		// Use a fixed Mode, so that this isn't sensitive to the directory and umask
+		// under which it was created. Additionally, windows can only set 0222,
+		// 0444, or 0666, none of which are executable.
+		Mode:     0555,
+		ModTime:  creationTime.Time,
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		return fmt.Errorf("writing header %q: %v", header, err)
+	}
+	if _, err := io.Copy(tw, reader); err != nil {
+		return fmt.Errorf("copy to tar %s: %v", filename, err)
+	}
+	return nil
 }
 
 // Adapted from: https://github.com/google/ko/blob/ab4d264103bd4931c6721d52bfc9d1a2e79c81d1/pkg/build/gobuild.go#L765
