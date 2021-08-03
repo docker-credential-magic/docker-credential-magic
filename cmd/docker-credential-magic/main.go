@@ -13,7 +13,7 @@ import (
 
 	"github.com/adrg/xdg"
 	_ "github.com/docker/cli/cli/config"
-	_ "github.com/docker/docker/pkg/homedir"
+	//_ "github.com/docker/docker/pkg/homedir"
 	"gopkg.in/yaml.v2"
 
 	"github.com/docker-credential-magic/docker-credential-magic/internal/constants"
