@@ -45,6 +45,12 @@ cat docker-credential-magic*.tar.gz | tar x -C /usr/local/bin 'docker-credential
 
 ### How to use `docker-credential-magic`
 
+```
+$ echo <domain> | docker-credential-magic get
+```
+
+---
+
 The following example shows how `docker-credential-magic` can be used to
 proxy auth to `docker-credential-gcr`, based on the detection of a `*.gcr.io` domain:
 
@@ -112,6 +118,12 @@ $ brew install docker-credential-helper-ecr
 ```
 
 ### How to use `docker-credential-magician`
+
+```
+$ docker-credential-magician mutate <ref>
+```
+
+---
 
 The following example shows how `docker-credential-magician` can be used to
 (1) augment the [`cosign`](https://github.com/sigstore/cosign) image with
