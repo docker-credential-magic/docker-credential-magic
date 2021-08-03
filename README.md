@@ -212,7 +212,7 @@ In addition, all helpers in `<custom_helpers_dir>` must be built for
 a Linux amd64 architecture.
 
 Lastly, the `magic` helper will *always* be sourced from
-the one baked-in to `magician`.
+the one baked into `magician`.
 
 #### Go library
 
