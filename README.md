@@ -11,6 +11,8 @@
   - [How to use `docker-credential-magic`](#how-to-use-docker-credential-magic)
     - [Local setup](#local-setup)
   - [How to use `docker-credential-magician`](#how-to-use-docker-credential-magician)
+    - [Including a subset of helpers](#including-a-subset-of-helpers)
+    - [Using custom mappings and/or helpers](#using-custom-mappings-andor-helpers)
     - [Go library](#go-library)
 - [Project history](#project-history)
 - [Contributing](#contributing)
@@ -160,6 +162,45 @@ DOCKER_CREDENTIAL_MAGIC_CONFIG=/opt/magic
 DOCKER_CONFIG=/opt/magic
 {"credsStore":"magic"}
 ```
+
+If the `-t` / `--tag` flag is not provided, `magician` will default to
+publishing the image back to its original location (overwriting the existing tag).
+
+#### Including a subset of helpers
+
+You may specify the `-i` / `--include` flag (one or more times) to
+limit the helpers that are added to the image.
+
+For example, to only include the `azure` and `gcp` helpers:
+
+```
+$ docker-credential-magician mutate example.com/myimage:1.2.3 \
+    -i azure -i gcp
+```
+
+Note: These each must match one of the supported helpers found in the
+[mappings/](./mappings/) directory.
+
+#### Using custom mappings and/or helpers
+
+In some scenarios, you may wish to supply a custom directory of mappings,
+for example to add extra domains. Or, you may wish to supply a custom
+directory of helper binaries, if you need to use a different version of
+a helper, or add your own.
+
+For these cases, you can use the following flags:
+
+- `--mappings-dir <custom_mappings_dir>`
+- `--helpers-dir <custom_helpers_dir>`
+
+Please note that all mappings and helpers must be provided (as in, `magician` will
+not automatically resolve any missing binaries in `<custom_helpers_dir>`).
+
+In addition, all helpers in `<custom_helpers_dir>` must be built for
+a Linux amd64 architecture.
+
+Lastly, the `magic` helper will *always* be sourced from
+the one baked-in to `magician`.
 
 #### Go library
 
