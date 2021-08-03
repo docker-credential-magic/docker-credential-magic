@@ -29,9 +29,16 @@ import (
 )
 
 type (
+	// MutateOption allows setting various configuration settings on a mutate operation.
 	MutateOption func(*mutateOperation)
 
 	mutateOperation struct {
+		configurable *mutateOperationConfigurable
+		runtime      *mutateOperationRuntime
+	}
+
+	// The following fields are configurable via options
+	mutateOperationConfigurable struct {
 		tag            string
 		userAgent      string
 		helpersDir     string
@@ -39,79 +46,160 @@ type (
 		includeHelpers []string
 		writer         io.Writer
 	}
+
+	// The following fields are *not* configurable via options,
+	// and are used to pass data between mutate steps
+	mutateOperationRuntime struct {
+		src              string
+		logger           *log.Logger
+		dst              name.Reference
+		supportedHelpers []string
+		requestedHelpers []string
+		baseImage        v1.Image
+		newImage         v1.Image
+	}
+
+	mutateStep func(o *mutateOperation) error
 )
 
+// MutateOptWithTag sets a custom tag to use for a mutate operation.
 func MutateOptWithTag(tag string) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.tag = tag
+		operation.configurable.tag = tag
 	}
 }
 
+// MutateOptWithUserAgent sets a custom user agent to use for a mutate operation.
 func MutateOptWithUserAgent(userAgent string) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.userAgent = userAgent
+		operation.configurable.userAgent = userAgent
 	}
 }
 
+// MutateOptWithHelpersDir sets a custom directory to source helper binaries for a mutate operation.
 func MutateOptWithHelpersDir(helpersDir string) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.helpersDir = helpersDir
+		operation.configurable.helpersDir = helpersDir
 	}
 }
 
+// MutateOptWithMappingsDir sets a custom directory to source mappings files for a mutate operation.
 func MutateOptWithMappingsDir(mappingsDir string) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.mappingsDir = mappingsDir
+		operation.configurable.mappingsDir = mappingsDir
 	}
 }
 
+// MutateOptWithIncludeHelpers sets a list of helpers to include in the new image for a mutate operation.
 func MutateOptWithIncludeHelpers(includeHelpers []string) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.includeHelpers = includeHelpers
+		operation.configurable.includeHelpers = includeHelpers
 	}
 }
 
+// MutateOptWithWriter sets an output writer to use for a mutate operation.
 func MutateOptWithWriter(writer io.Writer) MutateOption {
 	return func(operation *mutateOperation) {
-		operation.writer = writer
+		operation.configurable.writer = writer
 	}
 }
 
+// Mutate takes a remote source image, builds a new image with various
+// Docker credential helpers baked-in, then pushes it back to the registry
+// (at the same reference unless otherwise specified with MutateOptWithTag).
 func Mutate(src string, options ...MutateOption) error {
+	// Create default operation object
 	operation := &mutateOperation{
-		writer: ioutil.Discard,
+		configurable: &mutateOperationConfigurable{
+			writer: ioutil.Discard,
+		},
+		runtime: &mutateOperationRuntime{
+			src: src,
+		},
 	}
+
+	// Process user-provided options which modify configurable fields
 	for _, option := range options {
 		option(operation)
 	}
+
+	// Run each of the mutate steps in order
+	for _, step := range []mutateStep{
+
+		// Prepopulate various runtime fields on the operation
+		mutateStepSetLogger,
+		mutateStepSetDst,
+		mutateStepSetSupportedHelpers,
+		mutateStepSetRequestedHelpers,
+
+		// Attempt to pull the base image
+		mutateStepPullBaseImage,
+
+		// Build new image with helpers, mappings, env vars, etc.
+		// TODO: break this step into multiple?
+		mutateStepBuildNewImage,
+
+		// Push the new image to remote
+		mutateStepPushNewImage,
+	} {
+		if err := step(operation); err != nil {
+			return err
+		}
+	}
+
+	operation.runtime.logger.Println("Done.")
+	return nil
+}
+
+func mutateStepSetLogger(operation *mutateOperation) error {
 	logger := log.Default()
-	logger.SetOutput(operation.writer)
+	logger.SetOutput(operation.configurable.writer)
+	operation.runtime.logger = logger
+	return nil
+}
 
-	var tag string
-	if operation.tag != "" {
-		tag = operation.tag
-	} else {
-		tag = src
+func mutateStepSetDst(operation *mutateOperation) error {
+	ref := operation.runtime.src
+	if operation.configurable.tag != "" {
+		ref = operation.configurable.tag
 	}
-
-	// Validate the tag
-	dst, err := name.ParseReference(tag)
+	dst, err := name.ParseReference(ref)
 	if err != nil {
-		return fmt.Errorf("parsing reference %q: %v", tag, err)
+		return fmt.Errorf("parsing reference %q: %v", ref, err)
 	}
+	operation.runtime.dst = dst
+	return nil
+}
 
-	// Validate the requested helpers to include
-	supportedHelpers, err := getSupportedHelpers(operation.mappingsDir)
+func mutateStepSetSupportedHelpers(operation *mutateOperation) error {
+	var entries []fs.DirEntry
+	var err error
+	if operation.configurable.mappingsDir == "" {
+		entries, err = mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
+	} else {
+		entries, err = os.ReadDir(operation.configurable.mappingsDir)
+	}
 	if err != nil {
 		return fmt.Errorf("get supported helpers: %v", err)
 	}
+	var supportedHelpers []string
+	for _, entry := range entries {
+		filename := path.Base(entry.Name())
+		slug := strings.TrimSuffix(filename, path.Ext(filename))
+		supportedHelpers = append(supportedHelpers, slug)
+	}
+	operation.runtime.supportedHelpers = supportedHelpers
+	return nil
+}
+
+func mutateStepSetRequestedHelpers(operation *mutateOperation) error {
 	var requestedHelpers []string
-	if len(operation.includeHelpers) > 0 {
+	if len(operation.configurable.includeHelpers) > 0 {
 		// Make sure that the requested helpers are valid/supported
-		for _, slug := range operation.includeHelpers {
+		for _, slug := range operation.configurable.includeHelpers {
 			slugLower := strings.ToLower(slug)
 			var isValid bool
-			for _, h := range supportedHelpers {
+			for _, h := range operation.runtime.supportedHelpers {
 				if slugLower == h {
 					isValid = true
 					break
@@ -124,48 +212,49 @@ func Mutate(src string, options ...MutateOption) error {
 		}
 	} else {
 		// If no helpers requested, then default to all
-		requestedHelpers = supportedHelpers
+		requestedHelpers = operation.runtime.supportedHelpers
 	}
+	operation.runtime.requestedHelpers = requestedHelpers
+	return nil
+}
 
-	// Attempt to pull the image
-	logger.Printf("Pulling %s ...\n", src)
-	base, err := crane.Pull(src)
+func mutateStepPullBaseImage(operation *mutateOperation) error {
+	operation.runtime.logger.Printf("Pulling %s ...\n", operation.runtime.src)
+	baseImage, err := crane.Pull(operation.runtime.src)
 	if err != nil {
-		return fmt.Errorf("pulling %q: %v", src, err)
+		return fmt.Errorf("pulling %q: %v", operation.runtime.src, err)
 	}
+	operation.runtime.baseImage = baseImage
+	return nil
+}
 
-	// Build the tarball containing our new files
+func mutateStepBuildNewImage(operation *mutateOperation) error {
 	var b bytes.Buffer
 	tw := tar.NewWriter(&b)
 	var helperNames []string
-	for _, slug := range requestedHelpers {
+	for _, slug := range operation.runtime.requestedHelpers {
 		mappingsFilename := filepath.Join(constants.EmbeddedParentDir,
 			fmt.Sprintf("%s.%s", slug, constants.ExtensionYAML))
-		helperName, err := writeEmbeddedFileToTarAtPrefix(logger, tw,
-			mappingsFilename, operation.mappingsDir, operation.helpersDir, constants.MappingsSubdir)
+		helperName, err := writeEmbeddedFileToTarAtPrefix(operation.runtime.logger, tw,
+			mappingsFilename, operation.configurable.mappingsDir, operation.configurable.helpersDir, constants.MappingsSubdir)
 		if err != nil {
 			return fmt.Errorf("write mappings file %s to tar: %v", mappingsFilename, err)
 		}
 		helperNames = append(helperNames, helperName)
 	}
-
-	// Add our magic helper to the mix
 	helperNames = append(helperNames, "magic")
-
 	for _, helperName := range helperNames {
 		helperFilename := filepath.Join(constants.EmbeddedParentDir,
 			fmt.Sprintf("docker-credential-%s", helperName))
-		_, err = writeEmbeddedFileToTarAtPrefix(logger, tw,
-			helperFilename, operation.mappingsDir, operation.helpersDir, constants.BinariesSubdir)
+		_, err := writeEmbeddedFileToTarAtPrefix(operation.runtime.logger, tw,
+			helperFilename, operation.configurable.mappingsDir, operation.configurable.helpersDir, constants.BinariesSubdir)
 		if err != nil {
 			return fmt.Errorf("write helper file %s to tar: %v", helperFilename, err)
 		}
 	}
-
-	// Create our custom Docker config file, with magic catch-all
 	creationTime := v1.Time{}
 	name := fmt.Sprintf("%s/%s", strings.TrimPrefix(constants.MagicRootDir, "/"), constants.DockerConfigFileBasename)
-	logger.Printf("Adding /%s ...\n", name)
+	operation.runtime.logger.Printf("Adding /%s ...\n", name)
 	header := &tar.Header{
 		Name:     name,
 		Size:     int64(len(constants.DockerConfigFileContents)),
@@ -179,49 +268,43 @@ func Mutate(src string, options ...MutateOption) error {
 	if _, err := io.Copy(tw, strings.NewReader(constants.DockerConfigFileContents)); err != nil {
 		return fmt.Errorf("copy json file to tar: %v", err)
 	}
-
-	// Create layer
 	newLayer, err := tarball.LayerFromReader(&b)
 	if err != nil {
 		return fmt.Errorf("layer from reader: %v", err)
 	}
-
-	// Append the layer to image
-	img, err := mutate.AppendLayers(base, newLayer)
+	img, err := mutate.AppendLayers(operation.runtime.baseImage, newLayer)
 	if err != nil {
 		return fmt.Errorf("append layers: %v", err)
 	}
-
 	cfg, err := img.ConfigFile()
 	if err != nil {
 		return fmt.Errorf("load image config: %v", err)
 	}
-
 	cfg = cfg.DeepCopy()
-	updatePath(logger, cfg)
-	updateDockerConfig(logger, cfg)
-	updateMagicMappings(logger, cfg)
-
+	updatePath(operation.runtime.logger, cfg)
+	updateDockerConfig(operation.runtime.logger, cfg)
+	updateMagicMappings(operation.runtime.logger, cfg)
 	img, err = mutate.ConfigFile(img, cfg)
 	if err != nil {
 		return fmt.Errorf("mutate config file: %v", err)
 	}
+	operation.runtime.newImage = img
+	return nil
+}
 
-	logger.Printf("Pushing image to %s ...\n", tag)
-
+func mutateStepPushNewImage(operation *mutateOperation) error {
+	operation.runtime.logger.Printf("Pushing image to %s ...\n",
+		operation.runtime.dst.String())
 	opts := []remote.Option{
 		remote.WithAuthFromKeychain(authn.DefaultKeychain),
 	}
-
-	if operation.userAgent != "" {
-		opts = append(opts, remote.WithUserAgent(operation.userAgent))
+	if operation.configurable.userAgent != "" {
+		opts = append(opts, remote.WithUserAgent(operation.configurable.userAgent))
 	}
-
-	err = remote.Write(dst, img, opts...)
-	if err != nil {
+	if err := remote.Write(operation.runtime.dst,
+		operation.runtime.newImage, opts...); err != nil {
 		return fmt.Errorf("remote write: %v", err)
 	}
-
 	return nil
 }
 
@@ -351,24 +434,4 @@ func updateMagicMappings(logger *log.Logger, cf *v1.ConfigFile) {
 		}
 	}
 	cf.Config.Env = append(cf.Config.Env, constants.EnvVarDockerCredentialMagicConfig+"="+constants.MagicRootDir)
-}
-
-func getSupportedHelpers(mappingsDir string) ([]string, error) {
-	var entries []fs.DirEntry
-	var err error
-	if mappingsDir == "" {
-		entries, err = mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
-	} else {
-		entries, err = os.ReadDir(mappingsDir)
-	}
-	if err != nil {
-		return nil, err
-	}
-	var supportedHelpers []string
-	for _, entry := range entries {
-		filename := path.Base(entry.Name())
-		slug := strings.TrimSuffix(filename, path.Ext(filename))
-		supportedHelpers = append(supportedHelpers, slug)
-	}
-	return supportedHelpers, nil
 }
