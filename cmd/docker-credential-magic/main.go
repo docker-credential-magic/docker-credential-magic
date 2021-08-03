@@ -67,8 +67,9 @@ func subcommandGet() {
 	rawInput := scanner.Text()
 	domain, err := parseDomain(rawInput)
 	if err != nil {
-		fmt.Printf("[magic] parsing raw input: %s\n", err.Error())
-		os.Exit(1)
+		// TODO: invalid domain includes "localhost:5000" etc.
+		// not supported for now
+		getFallback(rawInput)
 	}
 	helperExe, err := getHelperExecutable(domain)
 	if err != nil {
@@ -76,55 +77,8 @@ func subcommandGet() {
 			fmt.Printf("[magic] getting helper executable for domain: %s\n", err.Error())
 			os.Exit(1)
 		}
-
-		var fallback string
-
-		// If DOCKER_ORIG_CONFIG set, fallback to that
-		if orig := os.Getenv(constants.EnvVarDockerOrigConfig); orig != "" {
-			fallback = orig
-		} else {
-			// If ~/.docker/config.json exists, fallback to that
-			dockerHomeDir := filepath.Join(homedir.Get(), constants.DockerHomeDir)
-			dockerConfigFile := filepath.Join(dockerHomeDir, constants.DockerConfigFileBasename)
-			if _, err := os.Stat(dockerConfigFile); err == nil {
-				fallback = dockerHomeDir
-			}
-		}
-
-		if fallback == "" {
-			// If no match and no fallback, send the anonymous token response
-			fmt.Print(constants.AnonymousTokenResponse)
-			os.Exit(0)
-		}
-
-		cf, err := config.Load(fallback)
-		if err != nil {
-			fmt.Printf("[magic] loading fallback config \"%s\": %s\n", fallback, err.Error())
-			os.Exit(1)
-		}
-		cfg, err := cf.GetAuthConfig(domain)
-		if err != nil {
-			fmt.Printf("[magic] get auth config for domain: %s\n", err.Error())
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		creds := toCreds(&authn.AuthConfig{
-			Username:      cfg.Username,
-			Password:      cfg.Password,
-			Auth:          cfg.Auth,
-			IdentityToken: cfg.IdentityToken,
-			RegistryToken: cfg.RegistryToken,
-		})
-		b, err := json.Marshal(&creds)
-		if err != nil {
-			fmt.Printf("[magic] converting creds to json: %s\n", err.Error())
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-		fmt.Println(string(b))
-		os.Exit(0)
+		getFallback(rawInput)
 	}
-
 	cmd := exec.Command(helperExe, constants.HelperSubcommandGet)
 	cmd.Stdin = strings.NewReader(rawInput)
 	cmd.Stderr = os.Stderr
@@ -205,6 +159,55 @@ func subcommandInit() {
 
 func subcommandVersion() {
 	fmt.Println(Version)
+	os.Exit(0)
+}
+
+func getFallback(rawInput string) {
+	var fallback string
+
+	// If DOCKER_ORIG_CONFIG set, fallback to that
+	if orig := os.Getenv(constants.EnvVarDockerOrigConfig); orig != "" {
+		fallback = orig
+	} else {
+		// If ~/.docker/config.json exists, fallback to that
+		dockerHomeDir := filepath.Join(homedir.Get(), constants.DockerHomeDir)
+		dockerConfigFile := filepath.Join(dockerHomeDir, constants.DockerConfigFileBasename)
+		if _, err := os.Stat(dockerConfigFile); err == nil {
+			fallback = dockerHomeDir
+		}
+	}
+
+	if fallback == "" {
+		// If no match and no fallback, send the anonymous token response
+		fmt.Print(constants.AnonymousTokenResponse)
+		os.Exit(0)
+	}
+
+	cf, err := config.Load(fallback)
+	if err != nil {
+		fmt.Printf("[magic] loading fallback config \"%s\": %s\n", fallback, err.Error())
+		os.Exit(1)
+	}
+	cfg, err := cf.GetAuthConfig(rawInput)
+	if err != nil {
+		fmt.Printf("[magic] get auth config for domain: %s\n", err.Error())
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	creds := toCreds(&authn.AuthConfig{
+		Username:      cfg.Username,
+		Password:      cfg.Password,
+		Auth:          cfg.Auth,
+		IdentityToken: cfg.IdentityToken,
+		RegistryToken: cfg.RegistryToken,
+	})
+	b, err := json.Marshal(&creds)
+	if err != nil {
+		fmt.Printf("[magic] converting creds to json: %s\n", err.Error())
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	fmt.Println(string(b))
 	os.Exit(0)
 }
 
