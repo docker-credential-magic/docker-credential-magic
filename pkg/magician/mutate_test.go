@@ -4,11 +4,10 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/crane"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,12 +18,19 @@ import (
 	_ "github.com/docker/distribution/registry/auth/htpasswd"
 	_ "github.com/docker/distribution/registry/storage/driver/inmemory"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/yaml.v2"
+
+	"github.com/docker-credential-magic/docker-credential-magic/internal/constants"
+	"github.com/docker-credential-magic/docker-credential-magic/internal/embedded/mappings"
+	"github.com/docker-credential-magic/docker-credential-magic/internal/types"
 )
 
 var (
@@ -40,9 +46,14 @@ type MutateTestSuite struct {
 	DockerRegistryHost string
 	TestReferences     []*name.Reference
 	RemoteOpts         []remote.Option
+	SlugHelperMap      map[string]string
 }
 
 func (suite *MutateTestSuite) SetupSuite() {
+	slugHelperMap, err := getSlugHelperMap()
+	suite.Nil(err, "no error loading slug helper map")
+	suite.SlugHelperMap = slugHelperMap
+
 	suite.CacheRootDir = testCacheRootDir
 	os.RemoveAll(suite.CacheRootDir)
 	os.Mkdir(suite.CacheRootDir, 0700)
@@ -59,7 +70,7 @@ func (suite *MutateTestSuite) SetupSuite() {
 	port, err := freeport.GetFreePort()
 	suite.Nil(err, "no error finding free port for test registry")
 	suite.DockerRegistryHost = fmt.Sprintf("localhost:%d", port)
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.Addr = fmt.Sprintf("127.0.0.1:%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 	config.Auth = configuration.Auth{
@@ -68,6 +79,11 @@ func (suite *MutateTestSuite) SetupSuite() {
 			"path":  htpasswdPath,
 		},
 	}
+
+	// If you want to see registry output, comment out these 2 lines
+	config.Log.Level = "fatal"
+	config.Log.AccessLog.Disabled = true
+
 	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
@@ -118,7 +134,7 @@ func (suite *MutateTestSuite) Test_0_HappyPath() {
 	altTag := fmt.Sprintf("%s.magic", ref.String())
 	opts := []MutateOption{
 		MutateOptWithTag(altTag),
-		MutateOptWithWriter(os.Stdout),
+		MutateOptWithWriter(ioutil.Discard), // set to "os.Stdout" to see mutate output
 		MutateOptWithUserAgent("gotta-test-this-opt-somewhere"),
 	}
 	err = Mutate(refStr, opts...)
@@ -134,31 +150,48 @@ func (suite *MutateTestSuite) Test_0_HappyPath() {
 	suite.Nil(err, "test0 Mutate fails extracting pushed reg tag")
 
 	for _, files := range [][]string{filesAlt, filesReg} {
-		suite.Contains(files, "/opt/magic/etc/aws.yml")
-		suite.Contains(files, "/opt/magic/etc/azure.yml")
-		suite.Contains(files, "/opt/magic/etc/gcp.yml")
-		suite.Contains(files, "/opt/magic/bin/docker-credential-ecr-login")
-		suite.Contains(files, "/opt/magic/bin/docker-credential-acr-env")
-		suite.Contains(files, "/opt/magic/bin/docker-credential-gcr")
-		suite.Contains(files, "/opt/magic/bin/docker-credential-magic")
-		suite.Contains(files, "/opt/magic/config.json")
+		for slug, helper := range suite.SlugHelperMap {
+			mappingFilename := fmt.Sprintf("%s/%s/%s.%s",
+				constants.MagicRootDir, constants.MappingsSubdir,
+				slug, constants.ExtensionYAML)
+			suite.Contains(files, mappingFilename)
+
+			helperFilename := fmt.Sprintf("%s/%s/%s-%s",
+				constants.MagicRootDir, constants.BinariesSubdir,
+				constants.DockerCredentialPrefix, helper)
+			suite.Contains(files, helperFilename)
+		}
+
+		magicHelperFilename := fmt.Sprintf("%s/%s/%s-%s",
+			constants.MagicRootDir, constants.BinariesSubdir,
+			constants.DockerCredentialPrefix, constants.MagicCredentialSuffix)
+		suite.Contains(files, magicHelperFilename)
+
+		magicConfigFilename := fmt.Sprintf("%s/%s",
+			constants.MagicRootDir, constants.DockerConfigFileBasename)
+		suite.Contains(files, magicConfigFilename)
 	}
 
 	for _, env := range [][]string{envAlt, envReg} {
-		suite.Contains(env, "DOCKER_CONFIG=/opt/magic")
-		suite.Contains(env, "DOCKER_CREDENTIAL_MAGIC_CONFIG=/opt/magic")
+		suite.Contains(env, fmt.Sprintf("%s=%s",
+			constants.EnvVarDockerConfig, constants.MagicRootDir))
+		suite.Contains(env, fmt.Sprintf("%s=%s",
+			constants.EnvVarDockerCredentialMagicConfig, constants.MagicRootDir))
 		var path string
 		var dockerOrigConfig string
 		for _, v := range env {
-			if strings.HasPrefix(v, "PATH=") {
+			if strings.HasPrefix(v, fmt.Sprintf("%s=", constants.EnvVarPath)) {
 				path = v
-			} else if strings.HasPrefix(v, "DOCKER_ORIG_CONFIG=") {
+			} else if strings.HasPrefix(v,
+				fmt.Sprintf("%s=", constants.EnvVarDockerOrigConfig)) {
 				dockerOrigConfig = v
 			}
 		}
-		suite.NotEqual("", path, "PATH not found")
-		suite.True(strings.HasPrefix(path, "PATH=/opt/magic/bin"))
-		suite.Equal("", dockerOrigConfig, "DOCKER_ORIG_CONFIG found")
+		suite.NotEqual("", path, fmt.Sprintf("%s not found", constants.EnvVarPath))
+		suite.True(strings.HasPrefix(path, fmt.Sprintf("%s=%s/%s",
+			constants.EnvVarPath, constants.MagicRootDir, constants.BinariesSubdir)))
+		suite.Equal("", dockerOrigConfig, fmt.Sprintf("%s found",
+			constants.EnvVarDockerOrigConfig))
 		suite.NotContains(env, "")
 	}
 }
@@ -170,8 +203,10 @@ func (suite *MutateTestSuite) Test_1_ExistingEnvVars() {
 
 	// Set DOCKER_CONFIG and PATH in the image
 	cfg = cfg.DeepCopy()
-	cfg.Config.Env = append(cfg.Config.Env, "DOCKER_CONFIG=/whoop/sie/daisies")
-	cfg.Config.Env = append(cfg.Config.Env, "PATH=/bloop/bin")
+	cfg.Config.Env = append(cfg.Config.Env,
+		fmt.Sprintf("%s=/whoop/sie/daisies", constants.EnvVarDockerConfig))
+	cfg.Config.Env = append(cfg.Config.Env,
+		fmt.Sprintf("%s=/bloop/bin", constants.EnvVarPath))
 
 	img, err := mutate.ConfigFile(empty, cfg)
 	suite.Nil(err, "test1 set config")
@@ -189,14 +224,19 @@ func (suite *MutateTestSuite) Test_1_ExistingEnvVars() {
 	var path string
 	var dockerOrigConfig string
 	for _, v := range env {
-		if strings.HasPrefix(v, "PATH=") {
+		if strings.HasPrefix(v, fmt.Sprintf("%s=", constants.EnvVarPath)) {
 			path = v
-		} else if strings.HasPrefix(v, "DOCKER_ORIG_CONFIG=") {
+		} else if strings.HasPrefix(v,
+			fmt.Sprintf("%s=", constants.EnvVarDockerOrigConfig)) {
 			dockerOrigConfig = v
 		}
 	}
-	suite.Equal("PATH=/opt/magic/bin:/bloop/bin", path)
-	suite.Equal("DOCKER_ORIG_CONFIG=/whoop/sie/daisies", dockerOrigConfig)
+	suite.Equal(
+		fmt.Sprintf("%s=%s/%s:/bloop/bin", constants.EnvVarPath,
+			constants.MagicRootDir, constants.BinariesSubdir), path)
+	suite.Equal(
+		fmt.Sprintf("%s=/whoop/sie/daisies", constants.EnvVarDockerOrigConfig),
+		dockerOrigConfig)
 }
 
 func (suite *MutateTestSuite) Test_2_LimitedIncludedHelpers() {
@@ -205,20 +245,55 @@ func (suite *MutateTestSuite) Test_2_LimitedIncludedHelpers() {
 	err := remote.Write(ref, img, suite.RemoteOpts...)
 	suite.Nil(err, "remote write for test2 setup")
 
-	err = Mutate(ref.String(), MutateOptWithIncludeHelpers([]string{"azure", "gcp"}))
+	// Only include the first two slugs in the map
+	var firstTwoKeys []string
+	for k, _ := range suite.SlugHelperMap {
+		firstTwoKeys = append(firstTwoKeys, k)
+		if len(firstTwoKeys) == 2 {
+			break
+		}
+	}
+
+	err = Mutate(ref.String(), MutateOptWithIncludeHelpers(firstTwoKeys))
 	suite.Nil(err, "test2 Mutate fails without alt tag")
 
 	files, _, err := extractImage(ref.String())
 	suite.Nil(err, "test2 Mutate fails extracting pushed reg tag")
 
-	suite.NotContains(files, "/opt/magic/etc/aws.yml")
-	suite.Contains(files, "/opt/magic/etc/azure.yml")
-	suite.Contains(files, "/opt/magic/etc/gcp.yml")
-	suite.NotContains(files, "/opt/magic/bin/docker-credential-ecr-login")
-	suite.Contains(files, "/opt/magic/bin/docker-credential-acr-env")
-	suite.Contains(files, "/opt/magic/bin/docker-credential-gcr")
-	suite.Contains(files, "/opt/magic/bin/docker-credential-magic")
-	suite.Contains(files, "/opt/magic/config.json")
+	for slug, helper := range suite.SlugHelperMap {
+		mappingFilename := fmt.Sprintf("%s/%s/%s.%s",
+			constants.MagicRootDir, constants.MappingsSubdir,
+			slug, constants.ExtensionYAML)
+
+		helperFilename := fmt.Sprintf("%s/%s/%s-%s",
+			constants.MagicRootDir, constants.BinariesSubdir,
+			constants.DockerCredentialPrefix, helper)
+
+		var shouldContain bool
+		for _, v := range firstTwoKeys {
+			if slug == v {
+				shouldContain = true
+				break
+			}
+		}
+
+		if shouldContain {
+			suite.Contains(files, mappingFilename)
+			suite.Contains(files, helperFilename)
+		} else {
+			suite.NotContains(files, mappingFilename)
+			suite.NotContains(files, helperFilename)
+		}
+	}
+
+	magicHelperFilename := fmt.Sprintf("%s/%s/%s-%s",
+		constants.MagicRootDir, constants.BinariesSubdir,
+		constants.DockerCredentialPrefix, constants.MagicCredentialSuffix)
+	suite.Contains(files, magicHelperFilename)
+
+	magicConfigFilename := fmt.Sprintf("%s/%s",
+		constants.MagicRootDir, constants.DockerConfigFileBasename)
+	suite.Contains(files, magicConfigFilename)
 
 	// Unsupported helpers
 	err = Mutate(ref.String(), MutateOptWithIncludeHelpers([]string{"boop"}))
@@ -271,8 +346,37 @@ func (suite *MutateTestSuite) Test_3_BadInput() {
 	suite.NotNil(err, "no error with missing ref")
 }
 
-func TestMagicianTestSuite(t *testing.T) {
+func TestMutateTestSuite(t *testing.T) {
 	suite.Run(t, new(MutateTestSuite))
+}
+
+// Dynamically load the list of supported helpers
+func getSlugHelperMap() (map[string]string, error) {
+	slugHelperMap := map[string]string{}
+	entries, err := mappings.Embedded.ReadDir(constants.EmbeddedParentDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		filename := path.Base(entry.Name())
+		embeddedFilename := filepath.Join(constants.EmbeddedParentDir, filename)
+		slug := strings.TrimSuffix(filename, path.Ext(filename))
+		file, err := mappings.Embedded.Open(embeddedFilename)
+		if err != nil {
+			return nil, err
+		}
+		b, err := ioutil.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+		var m types.HelperMapping
+		err = yaml.Unmarshal(b, &m)
+		if err != nil {
+			return nil, err
+		}
+		slugHelperMap[slug] = m.Helper
+	}
+	return slugHelperMap, nil
 }
 
 // Pull an image and return the filenames in the final layer and env
@@ -285,7 +389,7 @@ func extractImage(ref string) ([]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	finalLayer := layers[len(layers) - 1]
+	finalLayer := layers[len(layers)-1]
 	layerReader, err := finalLayer.Uncompressed()
 	if err != nil {
 		return nil, nil, err
