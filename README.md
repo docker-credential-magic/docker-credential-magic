@@ -66,6 +66,8 @@ $ echo "us.gcr.io" | docker-credential-magic get
 {"ServerURL":"us.gcr.io","Username":"_dcgcr_token","Secret":"*****"}
 ```
 
+*Note: `docker-credential-magic` is a "read-only" credential helper, and does not modify credentials in any way (some helpers implement other subcommands like `store` or `erase`).*
+
 #### Local setup
 
 The primary purpose of `magic` is to be added to images via `magician`.
@@ -177,6 +179,9 @@ DOCKER_CONFIG=/opt/magic
 
 If the `-t` / `--tag` flag is not provided, `magician` will default to
 publishing the image back to its original location (overwriting the existing tag).
+
+*Note: At this time, `docker-credential-magician` is only designed for x86–64/AMD64 Linux containers.
+More platforms may be supported in the future.*
 
 #### Including a subset of helpers
 
