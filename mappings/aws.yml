@@ -1,3 +1,4 @@
 helper: ecr-login
 domains:
   - amazonaws.com
+  - ecr.aws
