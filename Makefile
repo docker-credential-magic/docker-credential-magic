@@ -17,10 +17,6 @@ fetch-helpers:
 copy-mappings:
 	cp -r mappings internal/embedded/mappings/embedded
 
-.PHONY: vendor
-vendor:
-	go mod vendor
-
 .PHONY: build-magic
 build-magic:
 	CGO_ENABLED=0 \
