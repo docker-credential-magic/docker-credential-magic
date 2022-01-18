@@ -188,6 +188,17 @@ func getFallback(rawInput string) {
 		fmt.Printf("[magic] loading fallback config \"%s\": %s\n", fallback, err.Error())
 		os.Exit(1)
 	}
+
+	// In the following 2 scenarios we could end up with an endless loop, so short circuit
+	if cf.CredentialsStore == constants.MagicCredentialSuffix {
+		fmt.Print(constants.AnonymousTokenResponse)
+		os.Exit(0)
+	}
+	if v, ok := cf.CredentialHelpers[rawInput]; ok && v == constants.MagicCredentialSuffix {
+		fmt.Print(constants.AnonymousTokenResponse)
+		os.Exit(0)
+	}
+
 	cfg, err := cf.GetAuthConfig(rawInput)
 	if err != nil {
 		fmt.Printf("[magic] get auth config for domain: %s\n", err.Error())

@@ -45,6 +45,14 @@ cat docker-credential-magic*.tar.gz | tar x -C /usr/local/bin 'docker-credential
 
 ### How to use `docker-credential-magic`
 
+When using for the first time, initialize the configuration:
+
+```
+docker-credential-magic init
+```
+
+Then:
+
 ```
 $ echo <domain> | docker-credential-magic get
 ```
